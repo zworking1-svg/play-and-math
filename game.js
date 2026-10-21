@@ -10,6 +10,8 @@ const BOSS_EVERY = 10;         // каждый N-й пример — супер-
 const HINT_COST = 3;           // цена подсказки в монетах
 const FAST_SECONDS = 7;        // ответ быстрее — бонус за скорость
 const MAX_TIER = 8;
+// секунд на пример для каждого уровня сложности (индекс = tier)
+const TIME_LIMIT = [0, 15, 20, 20, 30, 35, 45, 60, 75];
 
 const AGES = {
   young: { label: '7–8 лет', startTier: 1 },
@@ -67,80 +69,33 @@ const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const chance = (p) => Math.random() < p;
 
 /* =========================================================
-   Генератор примеров по уровню сложности (tier 1…8)
+   Генератор примеров по уровню сложности (tier 1…8) — только умножение
    ========================================================= */
-function add(maxA, maxB, minA = 1, minB = 1) {
-  const a = rnd(minA, maxA), b = rnd(minB, maxB);
-  return { text: `${a} + ${b}`, answer: a + b };
-}
-function sub(minA, maxA, minB = 1) {
-  const a = rnd(minA, maxA), b = rnd(minB, a);
-  return { text: `${a} − ${b}`, answer: a - b };
-}
 function mul(minA, maxA, minB, maxB) {
   let a = rnd(minA, maxA), b = rnd(minB, maxB);
   if (chance(0.5)) [a, b] = [b, a];
   return { text: `${a} × ${b}`, answer: a * b };
 }
-function div(minD, maxD, minQ, maxQ) {
-  const d = rnd(minD, maxD), q = rnd(minQ, maxQ);
-  return { text: `${d * q} ÷ ${d}`, answer: q };
+function mul3(min, max) {
+  const a = rnd(min, max), b = rnd(min, max), c = rnd(min, max);
+  return { text: `${a} × ${b} × ${c}`, answer: a * b * c };
 }
 
+// Только умножение: от таблицы на 2–5 до двузначного на двузначное
 function generate(tier) {
   switch (tier) {
-    case 1:
-      return chance(0.55) ? add(10, 10) : sub(5, 20);
-    case 2:
-      return chance(0.5) ? add(60, 39, 10, 5) : sub(20, 99, 5);
-    case 3:
-      return pick([
-        () => mul(2, 5, 2, 10),
-        () => div(2, 5, 2, 10),
-        () => generate(2),
-      ])();
-    case 4:
-      return pick([
-        () => mul(2, 10, 2, 10),
-        () => mul(2, 10, 2, 10),
-        () => div(2, 10, 2, 10),
-        () => chance(0.5) ? add(99, 99, 20, 20) : sub(30, 150, 10),
-      ])();
-    case 5:
-      return pick([
-        () => chance(0.5) ? add(899, 899, 100, 100) : sub(200, 999, 50),
-        () => mul(12, 99, 2, 9),
-        () => div(2, 9, 11, 30),
-      ])();
-    case 6:
-      return pick([
-        () => mul(11, 30, 11, 30),
-        () => div(2, 9, 20, 111),
-        () => mul(101, 300, 2, 9),
-        () => chance(0.5) ? add(4999, 4999, 1000, 100) : sub(1000, 9999, 100),
-      ])();
-    case 7:
-      return pick([
-        () => { const a = rnd(2, 20), b = rnd(2, 20), c = rnd(2, 9);
-                return { text: `(${a} + ${b}) × ${c}`, answer: (a + b) * c }; },
-        () => { const a = rnd(10, 30), b = rnd(1, a - 1), c = rnd(2, 9);
-                return { text: `(${a} − ${b}) × ${c}`, answer: (a - b) * c }; },
-        () => { const a = rnd(3, 12), b = rnd(3, 12), c = rnd(5, 60);
-                return { text: `${a} × ${b} + ${c}`, answer: a * b + c }; },
-        () => mul(11, 60, 11, 40),
-        () => div(11, 19, 3, 20),
-      ])();
-    default: // 8
-      return pick([
-        () => mul(21, 99, 11, 99),
-        () => div(11, 25, 5, 40),
-        () => { const a = rnd(3, 12), b = rnd(3, 12), c = rnd(3, 12), d = rnd(3, 12);
-                return { text: `${a} × ${b} + ${c} × ${d}`, answer: a * b + c * d }; },
-        () => { const a = rnd(5, 9), b = rnd(5, 9), c = rnd(2, 9), d = rnd(2, a * b / c | 0 || 1);
-                return { text: `${a} × ${b} − ${c} × ${d}`, answer: a * b - c * d }; },
-        () => { const a = rnd(10, 50), b = rnd(10, 50), c = rnd(11, 19);
-                return { text: `(${a} + ${b}) × ${c}`, answer: (a + b) * c }; },
-      ])();
+    case 1: return mul(2, 5, 1, 5);                       // 3 × 4
+    case 2: return mul(2, 5, 2, 10);                      // 4 × 9
+    case 3: return mul(2, 10, 2, 10);                     // вся таблица
+    case 4: return chance(0.7) ? mul(11, 20, 2, 9) : mul(2, 10, 2, 10); // 14 × 6
+    case 5: return chance(0.8) ? mul(12, 99, 2, 9) : mul3(2, 5);        // 47 × 8, 3 × 4 × 5
+    case 6: return chance(0.75) ? mul(11, 30, 11, 30) : mul(101, 300, 2, 9); // 11 × 23
+    case 7: return pick([
+      () => mul(11, 60, 11, 40),
+      () => mul(101, 999, 2, 9),
+      () => mul3(2, 9),
+    ])();
+    default: return chance(0.75) ? mul(21, 99, 11, 99) : mul3(3, 12); // 8: 67 × 48
   }
 }
 
@@ -154,13 +109,14 @@ let S = null;            // состояние текущей игры
 let input = '';
 let locked = false;
 let nextTimer = null;
+let tickTimer = null;
 let newBadgesThisGame = [];
 
 function newGameState() {
   return {
     score: 0, hearts: MAX_HEARTS, coins: 0,
     streak: 0, bestStreak: 0, correct: 0, mistakes: 0,
-    level: 1, qCount: 0, problem: null, startedAt: 0, hintUsed: false,
+    level: 1, qCount: 0, problem: null, startedAt: 0, limit: 0, hintUsed: false,
   };
 }
 
@@ -201,7 +157,6 @@ function show(id) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === id));
   if (id === 'screen-records') renderRecords();
   if (id === 'screen-badges') renderBadges();
-  if (id === 'screen-menu') clearTimeout(nextTimer);
   window.scrollTo(0, 0);
 }
 
@@ -271,6 +226,75 @@ function setAge(age) {
 function showMenuError(msg) { $('#menu-error').textContent = msg; }
 
 /* =========================================================
+   Честная игра: свернул, переключился, уменьшил окно — проигрыш
+   ========================================================= */
+const Fair = {
+  active: false,
+  fullscreen: false,   // удалось ли включить полноэкранный режим
+  base: null,          // размер окна, от которого считаем «уменьшение»
+  calmUntil: 0,        // короткая пауза на старте, пока браузер разворачивает экран
+
+  start() {
+    this.active = true;
+    this.fullscreen = false;
+    this.calmUntil = performance.now() + 1500;
+    this.remember();
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (req) {
+      Promise.resolve(req.call(el, { navigationUI: 'hide' }))
+        .then(() => { this.fullscreen = true; this.remember(); })
+        .catch(() => { /* iPhone и некоторые браузеры не умеют — не страшно */ });
+    }
+  },
+
+  stop() {
+    this.active = false;
+    const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+    if (fsEl && exit) Promise.resolve(exit.call(document)).catch(() => {});
+  },
+
+  remember() {
+    this.base = { w: innerWidth, h: innerHeight, landscape: innerWidth > innerHeight };
+  },
+
+  onResize() {
+    if (!this.active || !this.base) return;
+    const w = innerWidth, h = innerHeight, landscape = w > h;
+    // поворот телефона — не нарушение, просто запоминаем новый размер
+    if (landscape !== this.base.landscape) return this.remember();
+    if (performance.now() > this.calmUntil && (w < this.base.w * 0.85 || h < this.base.h * 0.7)) {
+      return cheat('Окно игры стало меньше');
+    }
+    this.base.w = Math.max(this.base.w, w);
+    this.base.h = Math.max(this.base.h, h);
+  },
+
+  init() {
+    document.addEventListener('visibilitychange', () => {
+      if (this.active && document.hidden) cheat('Ты свернул игру или открыл другое приложение');
+    });
+    window.addEventListener('blur', () => {
+      if (this.active) cheat('Ты переключился на другое окно');
+    });
+    window.addEventListener('pagehide', () => {
+      if (this.active) cheat('Ты ушёл со страницы игры');
+    });
+    window.addEventListener('resize', () => this.onResize());
+    const onFs = () => {
+      const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+      if (this.active && this.fullscreen && !fsEl) cheat('Ты вышел из полноэкранного режима');
+    };
+    document.addEventListener('fullscreenchange', onFs);
+    document.addEventListener('webkitfullscreenchange', onFs);
+    // во время игры нельзя выделить и скопировать пример (например, чтобы вставить в ИИ)
+    ['copy', 'cut', 'contextmenu', 'selectstart', 'dragstart'].forEach((ev) =>
+      document.addEventListener(ev, (e) => { if (this.active) e.preventDefault(); }));
+  },
+};
+
+/* =========================================================
    Игра
    ========================================================= */
 function startGame() {
@@ -281,7 +305,13 @@ function startGame() {
   renderHearts();
   renderStats();
   say(`Привет, ${player.name}! Реши пример!`);
+  Fair.start();
   nextProblem();
+}
+
+function stopTimers() {
+  clearTimeout(nextTimer);
+  clearInterval(tickTimer);
 }
 
 function nextProblem() {
@@ -292,6 +322,7 @@ function nextProblem() {
   do { p = generate(tier); } while (S.problem && p.text === S.problem.text);
   S.problem = { ...p, boss, tier };
   S.startedAt = performance.now();
+  S.limit = TIME_LIMIT[tier];
   S.hintUsed = false;
   input = '';
   locked = false;
@@ -311,6 +342,25 @@ function nextProblem() {
   if (boss) say('Ого, супер-пример! За него очков вдвое больше!');
   renderInput();
   renderStats();
+  clearInterval(tickTimer);
+  tickTimer = setInterval(tick, 100);
+  tick();
+}
+
+// таймер на пример: не успел — теряешь сердечко
+function tick() {
+  if (!S || locked) return;
+  const left = S.limit - (performance.now() - S.startedAt) / 1000;
+  const fill = $('#timer-fill');
+  fill.style.width = Math.max(0, left / S.limit) * 100 + '%';
+  fill.classList.toggle('low', left < Math.min(5, S.limit * 0.3));
+  $('#timer-sec').textContent = Math.max(0, Math.ceil(left));
+  if (left <= 0) {
+    clearInterval(tickTimer);
+    locked = true;
+    $('#keypad').classList.add('locked');
+    onWrong('⏰ Время вышло!');
+  }
 }
 
 function renderInput() { $('#answer').textContent = input; }
@@ -319,7 +369,7 @@ function pressKey(k) {
   if (locked || !S) return;
   if (k === 'ok') return submit();
   if (k === 'back') input = input.slice(0, -1);
-  else if (/^\d$/.test(k) && input.length < 6) input = input === '0' ? k : input + k;
+  else if (/^\d$/.test(k) && input.length < 7) input = input === '0' ? k : input + k;
   else return;
   sfx.key();
   renderInput();
@@ -328,6 +378,7 @@ function pressKey(k) {
 function submit(value = input) {
   if (locked || value === '') return;
   locked = true;
+  clearInterval(tickTimer);
   input = String(value);
   renderInput();
   $('#keypad').classList.add('locked');
@@ -385,7 +436,7 @@ function onCorrect() {
   nextTimer = setTimeout(nextProblem, 1300);
 }
 
-function onWrong() {
+function onWrong(reason = pick(COMFORT)) {
   S.streak = 0;
   S.mistakes++;
   S.hearts--;
@@ -393,7 +444,7 @@ function onWrong() {
   $('#problem-card').classList.add('bad');
   animate($('#game-owl'), 'shake');
   sfx.bad();
-  say(`${pick(COMFORT)} Правильно: ${S.problem.text} = ${S.problem.answer}`, true);
+  say(`${reason} Правильно: ${S.problem.text} = ${S.problem.answer}`, true);
   renderStats();
   if (S.hearts <= 0) nextTimer = setTimeout(gameOver, 2200);
   else nextTimer = setTimeout(nextProblem, 2600);
@@ -422,31 +473,53 @@ function useHint() {
   renderStats();
 }
 
+// останавливает текущую игру и возвращает её итог
+function finish() {
+  stopTimers();
+  Fair.stop();
+  const result = S;
+  S = null;
+  locked = true;
+  return result;
+}
+
 function gameOver() {
+  const g = finish();
   sfx.over();
-  saveRecord();
-  $('#over-score').textContent = S.score;
-  $('#over-level').textContent = S.level;
-  $('#over-correct').textContent = S.correct;
-  $('#over-streak').textContent = S.bestStreak;
-  const best = store.get('records', [])[0];
-  const isTop = best && best.score === S.score && S.score > 0;
-  $('#over-msg').textContent = isTop ? '🏆 Это новый рекорд! Ура!' : pick(OVER_MSG);
+  const isTop = saveRecord(g);
+  $('#over-title').textContent = 'Сердечки закончились';
+  $('#over-msg').textContent = isTop ? '🏆 Это твой новый рекорд! Ура!' : pick(OVER_MSG);
   if (isTop) confetti(90);
-  $('#over-badges').innerHTML = newBadgesThisGame.length
+  showOver(g, false);
+}
+
+// нарушение правил честной игры: результат сгорает и в рекорды не попадает
+function cheat(reason) {
+  if (!S) return;
+  const g = finish();
+  sfx.bad();
+  $('#over-title').textContent = '🚫 Игра остановлена';
+  $('#over-msg').textContent = `${reason}. По правилам честной игры результат сгорел.`;
+  showOver(g, true);
+}
+
+function showOver(g, burned) {
+  $('#over-score').textContent = burned ? 0 : g.score;
+  $('#over-level').textContent = g.level;
+  $('#over-correct').textContent = g.correct;
+  $('#over-streak').textContent = g.bestStreak;
+  $('#screen-over').classList.toggle('burned', burned);
+  $('#over-badges').innerHTML = !burned && newBadgesThisGame.length
     ? '<p class="sub">Новые награды:</p>' + newBadgesThisGame
         .map((a) => `<span class="badge-chip">${a.ico} ${a.name}</span>`).join('')
     : '';
   show('screen-over');
-  S = null;
 }
 
 function exitGame() {
   if (!S) return show('screen-menu');
-  if (S.correct > 0 && !confirm('Выйти в меню? Рейтинг этой игры сохранится в рекордах.')) return;
-  clearTimeout(nextTimer);
-  if (S.score > 0) saveRecord();
-  S = null;
+  const g = finish();
+  saveRecord(g);
   show('screen-menu');
 }
 
@@ -481,7 +554,7 @@ function renderStats() {
 }
 
 /* =========================================================
-   Награды и рекорды
+   Награды
    ========================================================= */
 function award(id) {
   if (unlocked.has(id)) return;
@@ -506,32 +579,124 @@ function checkAchievements() {
   if (S.coins >= 30) award('rich');
 }
 
-function saveRecord() {
-  if (S.score <= 0) return;
-  const records = store.get('records', []);
-  records.push({
-    name: player.name, age: player.age, score: S.score, level: S.level,
-    date: new Date().toLocaleDateString('ru-RU'),
-  });
-  records.sort((a, b) => b.score - a.score);
-  store.set('records', records.slice(0, 10));
+function renderBadges() {
+  $('#badges-grid').innerHTML = ACHIEVEMENTS.map((a) => `
+    <div class="badge ${unlocked.has(a.id) ? '' : 'locked'}">
+      <span class="ico">${a.ico}</span><b>${a.name}</b><small>${a.desc}</small>
+    </div>`).join('');
 }
 
-function renderRecords() {
-  const list = $('#records-list');
+/* =========================================================
+   Рекорды: на этом устройстве + общий онлайн-рейтинг (Firebase Firestore)
+   ========================================================= */
+const Online = {
+  get enabled() {
+    const c = window.FIREBASE_CONFIG;
+    return !!(c && c.projectId && c.apiKey);
+  },
+  url(path) {
+    const c = window.FIREBASE_CONFIG;
+    return `https://firestore.googleapis.com/v1/projects/${c.projectId}/databases/(default)/documents${path}?key=${c.apiKey}`;
+  },
+  async submit(rec) {
+    if (!this.enabled) return;
+    const res = await fetch(this.url('/scores'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields: {
+        name: { stringValue: rec.name },
+        age: { stringValue: rec.age },
+        score: { integerValue: String(rec.score) },
+        level: { integerValue: String(rec.level) },
+        createdAt: { timestampValue: new Date().toISOString() },
+      } }),
+    });
+    if (!res.ok) throw new Error('submit ' + res.status);
+  },
+  async top(age, limit = 20) {
+    const res = await fetch(this.url(':runQuery'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ structuredQuery: {
+        from: [{ collectionId: 'scores' }],
+        where: { fieldFilter: { field: { fieldPath: 'age' }, op: 'EQUAL', value: { stringValue: age } } },
+        orderBy: [{ field: { fieldPath: 'score' }, direction: 'DESCENDING' }],
+        limit,
+      } }),
+    });
+    if (!res.ok) throw new Error('top ' + res.status);
+    const rows = await res.json();
+    return rows.filter((r) => r.document).map(({ document: { fields: f } }) => ({
+      name: f.name?.stringValue ?? '?',
+      age: f.age?.stringValue,
+      score: Number(f.score?.integerValue ?? 0),
+      level: Number(f.level?.integerValue ?? 1),
+      date: f.createdAt ? new Date(f.createdAt.timestampValue).toLocaleDateString('ru-RU') : '',
+    }));
+  },
+};
+
+// сохраняет результат; возвращает true, если это лучший результат на устройстве
+function saveRecord(g) {
+  if (g.score <= 0) return false;
+  const rec = {
+    name: player.name, age: player.age, score: g.score, level: g.level,
+    date: new Date().toLocaleDateString('ru-RU'),
+  };
   const records = store.get('records', []);
+  const isTop = !records.length || g.score > records[0].score;
+  records.push(rec);
+  records.sort((a, b) => b.score - a.score);
+  store.set('records', records.slice(0, 10));
+  Online.submit(rec).catch(() => toast('Нет интернета — результат сохранён только на этом устройстве'));
+  return isTop;
+}
+
+const recView = { src: Online.enabled ? 'online' : 'local', age: null };
+
+async function renderRecords() {
+  recView.age = recView.age || (AGES[player.age] ? player.age : 'young');
+  document.querySelectorAll('#rec-src button').forEach((b) => b.classList.toggle('on', b.dataset.src === recView.src));
+  document.querySelectorAll('#rec-age button').forEach((b) => b.classList.toggle('on', b.dataset.age === recView.age));
+  const list = $('#records-list');
+  const note = $('#rec-note');
+  note.textContent = '';
+
+  if (recView.src === 'local') {
+    const local = store.get('records', []).filter((r) => r.age === recView.age);
+    return fillRecords(local, 'Пока пусто. Сыграй и стань первым!');
+  }
+  if (!Online.enabled) {
+    list.innerHTML = '';
+    note.textContent = 'Общий рейтинг ещё не подключён (см. README → «Онлайн-рейтинг»).';
+    return;
+  }
+  list.innerHTML = '<li class="empty">Загружаю… ⏳</li>';
+  const want = { ...recView };
+  try {
+    const rows = await Online.top(want.age);
+    if (want.src !== recView.src || want.age !== recView.age) return; // пока грузили, переключили вкладку
+    fillRecords(rows, 'В этой группе ещё никто не играл. Будь первым!');
+  } catch {
+    list.innerHTML = '<li class="empty">Не получилось загрузить. Проверь интернет 📶</li>';
+  }
+}
+
+function fillRecords(records, emptyText) {
+  const list = $('#records-list');
   if (!records.length) {
-    list.innerHTML = '<li class="empty">Пока пусто. Сыграй и стань первым!</li>';
+    list.innerHTML = `<li class="empty">${emptyText}</li>`;
     return;
   }
   list.innerHTML = '';
   records.forEach((r) => {
     const li = document.createElement('li');
+    if (r.name === player.name) li.classList.add('me');
     const name = document.createElement('span');
     name.className = 'r-name';
     name.textContent = r.name;
     const meta = document.createElement('small');
-    meta.textContent = `${AGES[r.age]?.label ?? ''} · уровень ${r.level} · ${r.date}`;
+    meta.textContent = `уровень ${r.level} · ${r.date}`;
     name.appendChild(meta);
     const score = document.createElement('b');
     score.className = 'r-score';
@@ -539,13 +704,6 @@ function renderRecords() {
     li.append(name, score);
     list.appendChild(li);
   });
-}
-
-function renderBadges() {
-  $('#badges-grid').innerHTML = ACHIEVEMENTS.map((a) => `
-    <div class="badge ${unlocked.has(a.id) ? '' : 'locked'}">
-      <span class="ico">${a.ico}</span><b>${a.name}</b><small>${a.desc}</small>
-    </div>`).join('');
 }
 
 /* =========================================================
@@ -561,11 +719,14 @@ function initControls() {
     if (/^\d$/.test(e.key)) pressKey(e.key);
     else if (e.key === 'Backspace') { e.preventDefault(); pressKey('back'); }
     else if (e.key === 'Enter') pressKey('ok');
-    else if (e.key === 'Escape') exitGame();
   });
   $('#btn-hint').addEventListener('click', useHint);
   $('#btn-exit').addEventListener('click', exitGame);
   $('#btn-again').addEventListener('click', startGame);
+  document.querySelectorAll('#rec-src button').forEach((b) =>
+    b.addEventListener('click', () => { recView.src = b.dataset.src; renderRecords(); }));
+  document.querySelectorAll('#rec-age button').forEach((b) =>
+    b.addEventListener('click', () => { recView.age = b.dataset.age; renderRecords(); }));
   const sb = $('#btn-sound');
   const paintSound = () => { sb.textContent = soundOn ? '🔊' : '🔇'; };
   paintSound();
@@ -574,3 +735,4 @@ function initControls() {
 
 initMenu();
 initControls();
+Fair.init();

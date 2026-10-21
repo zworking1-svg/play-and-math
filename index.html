@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <title>Считай с Филей</title>
-  <meta name="description" content="Математическая игра для детей 7–12 лет: решай примеры вместе с совёнком Филей, собирай звёзды и награды.">
+  <meta name="description" content="Игра на умножение для детей 7–12 лет: решай примеры вместе с совёнком Филей, собирай звёзды и награды.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦉</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -85,6 +85,7 @@
         </div>
         <button id="btn-play" class="btn btn-main">Играть ▶</button>
         <p id="menu-error" class="error"></p>
+        <p class="fair-note">🔒 Честная игра: не сворачивай игру, не переключайся на другие приложения и не уменьшай окно — иначе результат сгорит.</p>
       </div>
 
       <div class="menu-links">
@@ -120,6 +121,7 @@
         <div class="combo" id="combo"></div>
         <div class="problem"><span id="problem-text">2 + 2</span> = <span id="answer" class="answer"></span></div>
         <div class="options" id="options"></div>
+        <div class="timer"><div id="timer-fill"></div><span id="timer-sec"></span></div>
       </div>
 
       <div class="keypad" id="keypad">
@@ -136,7 +138,7 @@
     <!-- ============ КОНЕЦ ИГРЫ ============ -->
     <section id="screen-over" class="screen">
       <div class="owl-wrap big"><svg class="owl sad"><use href="#owl"/></svg></div>
-      <h2 class="title">Сердечки закончились</h2>
+      <h2 class="title" id="over-title">Сердечки закончились</h2>
       <p class="sub" id="over-msg">Ничего страшного — попробуем ещё раз!</p>
       <div class="card over-stats">
         <div><small>Рейтинг</small><b id="over-score">0</b></div>
@@ -152,6 +154,16 @@
     <!-- ============ РЕКОРДЫ ============ -->
     <section id="screen-records" class="screen">
       <h2 class="title">🏆 Рекорды</h2>
+      <div class="tabs" id="rec-src">
+        <button data-src="online">🌍 Все игроки</button>
+        <button data-src="local">📱 Мои игры</button>
+      </div>
+      <div class="tabs small" id="rec-age">
+        <button data-age="young">7–8 лет</button>
+        <button data-age="mid">9–10 лет</button>
+        <button data-age="old">11–12 лет</button>
+      </div>
+      <p class="sub" id="rec-note"></p>
       <div class="card"><ol id="records-list" class="records"></ol></div>
       <button class="btn btn-soft" data-open="screen-menu">← Назад</button>
     </section>
@@ -168,7 +180,8 @@
     <section id="screen-rules" class="screen">
       <h2 class="title">📖 Как играть</h2>
       <div class="card rules">
-        <p>🧮 Реши пример и нажми <b>✓</b> (или Enter).</p>
+        <p>✖️ Реши пример на умножение и нажми <b>✓</b> (или Enter).</p>
+        <p>⏰ На каждый пример есть <b>время</b>. Не успел — минус сердечко.</p>
         <p>❤️ У тебя <b>10 сердечек</b>. Ошибка забирает одно. Когда сердечки кончатся — игра начнётся заново.</p>
         <p>⭐ За верный ответ растёт <b>рейтинг</b>. Чем выше уровень — тем больше очков.</p>
         <p>🔥 Отвечай верно подряд — включится <b>комбо ×2</b> и <b>×3</b>!</p>
@@ -176,6 +189,8 @@
         <p>⚡ Ответил быстро? Получи <b>бонус за скорость</b>.</p>
         <p>👑 Каждый 10-й пример — <b>супер-пример</b>: он сложнее, но очков вдвое больше.</p>
         <p>💰 Собирай монеты и трать их на <b>подсказки</b>.</p>
+        <p>🔒 <b>Честная игра.</b> Если свернёшь игру, переключишься на другое приложение или окно, уменьшишь окно или выйдешь из полноэкранного режима — игра сразу закончится, и результат сгорит.</p>
+        <p>🌍 Твой результат попадает в <b>общий рейтинг</b> всех игроков твоего возраста.</p>
         <p>🦉 С каждым уровнем Филя получает новый наряд: бабочку, очки, шапку учёного и корону!</p>
       </div>
       <button class="btn btn-soft" data-open="screen-menu">← Назад</button>
@@ -185,6 +200,7 @@
   <div id="toast" class="toast"></div>
   <div id="confetti" class="confetti"></div>
 
+  <script src="config.js"></script>
   <script src="game.js"></script>
 </body>
 </html>

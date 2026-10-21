@@ -189,13 +189,34 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; }
 .keypad .k-back { background: #ffeef0; }
 .keypad.locked { opacity: .6; pointer-events: none; }
 
+.timer {
+  position: relative; height: 10px; margin: 14px -4px 0; border-radius: 5px; background: #eef1f8; overflow: hidden;
+}
+#timer-fill { height: 100%; width: 100%; background: var(--blue); border-radius: 5px; transition: width .1s linear; }
+#timer-fill.low { background: var(--bad); }
+#timer-sec { position: absolute; right: 6px; top: -1px; font-size: 10px; line-height: 12px; color: #fff; display: none; }
+.problem-card.ok .timer, .problem-card.bad .timer { visibility: hidden; }
+
+.fair-note { margin: 0; font-size: 13px; font-weight: 600; color: var(--muted); text-align: center; line-height: 1.35; }
+
 /* ---------- конец игры ---------- */
 .over-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; text-align: center; }
 .over-stats b { font-size: 28px; }
 #over-badges:empty { display: none; }
+#screen-over.burned .over-stats { background: #ffe1e5; }
+#screen-over.burned #over-msg { color: var(--bad); font-weight: 800; }
 #over-badges { text-align: center; }
 
 /* ---------- рекорды ---------- */
+.tabs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.tabs.small { grid-template-columns: repeat(3, 1fr); }
+.tabs button {
+  padding: 10px 4px; border-radius: 14px; font-size: 16px; background: var(--card); box-shadow: 0 3px 0 #d5dcef;
+}
+.tabs.small button { font-size: 14px; padding: 8px 4px; }
+.tabs button.on { background: var(--blue); color: #fff; box-shadow: 0 3px 0 #2560c4; }
+#rec-note:empty { display: none; }
+.records li.me .r-name { color: var(--blue); }
 .records { margin: 0; padding: 0; list-style: none; counter-reset: r; }
 .records li {
   counter-increment: r; display: flex; align-items: center; gap: 10px;
