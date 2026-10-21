@@ -1,2 +1,4 @@
 # Graphify: локальный граф проекта, не публикуем
 graphify-out/
+# Локальные настройки Claude Code (хуки graphify с путём на этом компьютере)
+.claude/settings.json

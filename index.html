@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <title>Считай с Филей</title>
-  <meta name="description" content="Игра на умножение для детей 7–12 лет: решай примеры вместе с совёнком Филей, собирай звёзды и награды.">
+  <title>Загрузка…</title>
+  <meta name="description" content="Игра на умножение для детей 7–12 лет: решай примеры вместе с совёнком, собирай звёзды и награды.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦉</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -62,33 +62,62 @@
   </svg>
 
   <main class="app">
-    <!-- ============ МЕНЮ ============ -->
-    <section id="screen-menu" class="screen active">
+    <!-- ============ ЗАГРУЗКА ============ -->
+    <section id="screen-loading" class="screen active">
+      <div class="owl-wrap big bob"><svg class="owl lvl-1"><use href="#owl"/></svg></div>
+      <h1 class="title js-title">&nbsp;</h1>
+      <p class="sub" id="loading-msg">Загружаю… ⏳</p>
+    </section>
+
+    <!-- ============ ВХОД / РЕГИСТРАЦИЯ ============ -->
+    <section id="screen-auth" class="screen">
       <div class="menu-hero">
         <div class="owl-wrap big bob"><svg class="owl lvl-1"><use href="#owl"/></svg></div>
-        <div class="bubble">Привет! Я совёнок Филя.<br>Давай считать вместе!</div>
+        <div class="bubble">Привет! Я совёнок <span class="js-hero"></span>.<br>Войди или создай свой аккаунт!</div>
       </div>
-      <h1 class="title">Считай с Филей</h1>
+      <h1 class="title js-title">&nbsp;</h1>
+
+      <div class="tabs" id="auth-tabs">
+        <button type="button" data-mode="login" class="on">Войти</button>
+        <button type="button" data-mode="register">Новый игрок</button>
+      </div>
+
+      <form class="card form" id="auth-form" autocomplete="off">
+        <label class="field">
+          <span>Логин</span>
+          <input id="auth-login" type="text" maxlength="12" placeholder="Например: Маша_2015" autocomplete="username">
+        </label>
+        <label class="field">
+          <span>PIN-код (4–6 цифр)</span>
+          <input id="auth-pin" type="password" inputmode="numeric" maxlength="6" placeholder="••••" autocomplete="current-password">
+        </label>
+        <div class="field" id="auth-age-field" hidden>
+          <span>Сколько тебе лет?</span>
+          <div class="age-pick" id="auth-age-pick"></div>
+        </div>
+        <button id="btn-auth" class="btn btn-main" type="submit">Войти ▶</button>
+        <p id="auth-error" class="error"></p>
+        <p class="fair-note" id="auth-hint">Запомни логин и PIN — по ним ты войдёшь с любого телефона.</p>
+      </form>
+    </section>
+
+    <!-- ============ МЕНЮ ============ -->
+    <section id="screen-menu" class="screen">
+      <div class="menu-hero">
+        <div class="owl-wrap big bob" id="menu-owl"><svg class="owl lvl-1"><use href="#owl"/></svg></div>
+        <div class="bubble" id="menu-hello">Привет!</div>
+      </div>
+      <h1 class="title js-title">&nbsp;</h1>
 
       <div class="card form">
-        <label class="field">
-          <span>Как тебя зовут?</span>
-          <input id="player-name" type="text" maxlength="14" placeholder="Твоё имя" autocomplete="off">
-        </label>
-        <div class="field">
-          <span>Сколько тебе лет?</span>
-          <div class="age-pick" id="age-pick">
-            <button type="button" data-age="young">7–8</button>
-            <button type="button" data-age="mid">9–10</button>
-            <button type="button" data-age="old">11–12</button>
-          </div>
-        </div>
+        <div class="menu-goal" id="menu-goal"></div>
         <button id="btn-play" class="btn btn-main">Играть ▶</button>
         <p id="menu-error" class="error"></p>
-        <p class="fair-note">🔒 Честная игра: не сворачивай игру, не переключайся на другие приложения и не уменьшай окно — иначе результат сгорит.</p>
+        <p class="fair-note" id="fair-note">🔒 Честная игра: не сворачивай игру, не переключайся на другие приложения и не уменьшай окно — иначе игра остановится и нарушение запишется.</p>
       </div>
 
-      <div class="menu-links">
+      <div class="menu-links four">
+        <button class="btn btn-soft" data-open="screen-cabinet">👤 Мой кабинет</button>
         <button class="btn btn-soft" data-open="screen-records">🏆 Рекорды</button>
         <button class="btn btn-soft" data-open="screen-badges">🎖️ Награды</button>
         <button class="btn btn-soft" data-open="screen-rules">📖 Правила</button>
@@ -110,6 +139,7 @@
       </div>
 
       <div class="level-bar"><div id="level-fill"></div><span id="rank-name">Новичок</span></div>
+      <div class="goal-bar"><div id="goal-fill"></div><span id="goal-text"></span></div>
 
       <div class="stage">
         <div class="owl-wrap" id="game-owl"><svg class="owl"><use href="#owl"/></svg></div>
@@ -119,7 +149,7 @@
       <div class="card problem-card" id="problem-card">
         <div class="boss-tag">⭐ СУПЕР-ПРИМЕР ×2 ⭐</div>
         <div class="combo" id="combo"></div>
-        <div class="problem"><span id="problem-text">2 + 2</span> = <span id="answer" class="answer"></span></div>
+        <div class="problem"><span id="problem-text">2 × 2</span> = <span id="answer" class="answer"></span></div>
         <div class="options" id="options"></div>
         <div class="timer"><div id="timer-fill"></div><span id="timer-sec"></span></div>
       </div>
@@ -132,38 +162,63 @@
         <button data-k="0">0</button>
         <button data-k="ok" class="k-ok" aria-label="Проверить">✓</button>
       </div>
-      <button id="btn-hint" class="btn btn-hint">💡 Подсказка (3 💰)</button>
+      <button id="btn-hint" class="btn btn-hint">💡 Подсказка</button>
+
+      <div class="pause" id="pause" hidden>
+        <div class="card pause-box">
+          <div class="pause-ico">⏸️</div>
+          <h2>Игра остановлена</h2>
+          <p id="pause-reason"></p>
+          <p class="sub">Это нарушение правил честной игры — оно записано. Твои очки сохранены, а пример заменится новым.</p>
+          <p class="sub warn" id="pause-count"></p>
+          <button id="btn-resume" class="btn btn-main">Продолжить ▶</button>
+        </div>
+      </div>
     </section>
 
     <!-- ============ КОНЕЦ ИГРЫ ============ -->
     <section id="screen-over" class="screen">
-      <div class="owl-wrap big"><svg class="owl sad"><use href="#owl"/></svg></div>
+      <div class="owl-wrap big" id="over-owl"><svg class="owl sad"><use href="#owl"/></svg></div>
       <h2 class="title" id="over-title">Сердечки закончились</h2>
       <p class="sub" id="over-msg">Ничего страшного — попробуем ещё раз!</p>
       <div class="card over-stats">
         <div><small>Рейтинг</small><b id="over-score">0</b></div>
         <div><small>Уровень</small><b id="over-level">1</b></div>
         <div><small>Верных ответов</small><b id="over-correct">0</b></div>
+        <div><small>Ошибок</small><b id="over-wrong">0</b></div>
         <div><small>Лучшая серия</small><b id="over-streak">0</b></div>
+        <div><small>Время игры</small><b id="over-time">0</b></div>
       </div>
+      <p class="sub warn" id="over-viol"></p>
       <div id="over-badges"></div>
       <button id="btn-again" class="btn btn-main">Играть снова ↻</button>
       <button class="btn btn-soft" data-open="screen-menu">В меню</button>
     </section>
 
+    <!-- ============ КАБИНЕТ ============ -->
+    <section id="screen-cabinet" class="screen">
+      <h2 class="title">👤 Мой кабинет</h2>
+      <div class="card cab-head">
+        <div class="owl-wrap" id="cab-owl"><svg class="owl lvl-1"><use href="#owl"/></svg></div>
+        <div>
+          <b id="cab-login">Игрок</b>
+          <label class="cab-age">Возраст: <select id="cab-age"></select></label>
+        </div>
+      </div>
+      <div class="card cab-rank" id="cab-rank">Считаю твоё место… ⏳</div>
+      <div class="cab-stats" id="cab-stats"></div>
+      <h3 class="section-title">Последние игры</h3>
+      <div class="card"><ul class="games" id="cab-games"></ul></div>
+      <button class="btn btn-soft" data-open="screen-badges">🎖️ Мои награды</button>
+      <button class="btn btn-soft" data-open="screen-menu">← Назад</button>
+      <button class="btn btn-ghost" id="btn-logout">Выйти из аккаунта</button>
+    </section>
+
     <!-- ============ РЕКОРДЫ ============ -->
     <section id="screen-records" class="screen">
       <h2 class="title">🏆 Рекорды</h2>
-      <div class="tabs" id="rec-src">
-        <button data-src="online">🌍 Все игроки</button>
-        <button data-src="local">📱 Мои игры</button>
-      </div>
-      <div class="tabs small" id="rec-age">
-        <button data-age="young">7–8 лет</button>
-        <button data-age="mid">9–10 лет</button>
-        <button data-age="old">11–12 лет</button>
-      </div>
-      <p class="sub" id="rec-note"></p>
+      <p class="sub">Лучший результат каждого игрока</p>
+      <div class="tabs small" id="rec-age"></div>
       <div class="card"><ol id="records-list" class="records"></ol></div>
       <button class="btn btn-soft" data-open="screen-menu">← Назад</button>
     </section>
@@ -171,7 +226,7 @@
     <!-- ============ НАГРАДЫ ============ -->
     <section id="screen-badges" class="screen">
       <h2 class="title">🎖️ Награды</h2>
-      <p class="sub">Награды остаются у тебя навсегда, даже если игра закончилась.</p>
+      <p class="sub" id="badges-count">Награды остаются у тебя навсегда, даже если игра закончилась.</p>
       <div id="badges-grid" class="badges"></div>
       <button class="btn btn-soft" data-open="screen-menu">← Назад</button>
     </section>
@@ -181,17 +236,18 @@
       <h2 class="title">📖 Как играть</h2>
       <div class="card rules">
         <p>✖️ Реши пример на умножение и нажми <b>✓</b> (или Enter).</p>
+        <p>🏆 Набери <b id="rule-win">2000</b> очков за одну игру — это <b>победа</b>!</p>
         <p>⏰ На каждый пример есть <b>время</b>. Не успел — минус сердечко.</p>
-        <p>❤️ У тебя <b>10 сердечек</b>. Ошибка забирает одно. Когда сердечки кончатся — игра начнётся заново.</p>
+        <p>❤️ У тебя <b id="rule-hearts">10</b> сердечек. Ошибка забирает одно. Когда сердечки кончатся — игра начнётся заново.</p>
         <p>⭐ За верный ответ растёт <b>рейтинг</b>. Чем выше уровень — тем больше очков.</p>
         <p>🔥 Отвечай верно подряд — включится <b>комбо ×2</b> и <b>×3</b>!</p>
         <p>💖 Каждые <b>10 верных ответов подряд</b> дарят новое сердечко.</p>
         <p>⚡ Ответил быстро? Получи <b>бонус за скорость</b>.</p>
-        <p>👑 Каждый 10-й пример — <b>супер-пример</b>: он сложнее, но очков вдвое больше.</p>
+        <p>👑 Каждый <b id="rule-boss">10</b>-й пример — <b>супер-пример</b>: он сложнее, но очков вдвое больше.</p>
         <p>💰 Собирай монеты и трать их на <b>подсказки</b>.</p>
-        <p>🔒 <b>Честная игра.</b> Если свернёшь игру, переключишься на другое приложение или окно, уменьшишь окно или выйдешь из полноэкранного режима — игра сразу закончится, и результат сгорит.</p>
-        <p>🌍 Твой результат попадает в <b>общий рейтинг</b> всех игроков твоего возраста.</p>
-        <p>🦉 С каждым уровнем Филя получает новый наряд: бабочку, очки, шапку учёного и корону!</p>
+        <p id="rule-fair">🔒 <b>Честная игра.</b> Если свернёшь игру, переключишься на другое приложение или окно, уменьшишь окно или выйдешь из полноэкранного режима — игра остановится, пример заменится новым, а нарушение запишется. Очки сохранятся.</p>
+        <p>🌍 Твой лучший результат попадает в <b>общий рейтинг</b> игроков твоего возраста.</p>
+        <p>🦉 С каждым уровнем <span class="js-hero"></span> получает новый наряд: бабочку, очки, шапку учёного и корону!</p>
       </div>
       <button class="btn btn-soft" data-open="screen-menu">← Назад</button>
     </section>

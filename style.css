@@ -203,8 +203,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; }
 .over-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; text-align: center; }
 .over-stats b { font-size: 28px; }
 #over-badges:empty { display: none; }
-#screen-over.burned .over-stats { background: #ffe1e5; }
-#screen-over.burned #over-msg { color: var(--bad); font-weight: 800; }
+
 #over-badges { text-align: center; }
 
 /* ---------- рекорды ---------- */
@@ -284,3 +283,71 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* ---------- аккаунт, кабинет, цель ---------- */
+[hidden] { display: none !important; }
+
+.btn-ghost { background: transparent; color: var(--muted); font-size: 16px; padding: 10px; }
+.btn:disabled { opacity: .6; cursor: default; }
+
+.menu-links.four { grid-template-columns: repeat(2, 1fr); }
+.menu-links.four .btn { font-size: 16px; padding: 14px 6px; }
+.menu-goal { text-align: center; font-size: 16px; font-weight: 700; color: var(--muted); }
+.menu-goal b { color: var(--main); }
+
+.goal-bar {
+  position: relative; height: 22px; border-radius: 11px; background: #fff; overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,.08); margin-top: -6px;
+}
+#goal-fill { height: 100%; width: 0; background: linear-gradient(90deg, #7be0ad, #2ec27e); transition: width .4s ease; }
+#goal-text { position: absolute; inset: 0; display: grid; place-items: center; font-size: 12px; }
+
+.over-stats { grid-template-columns: repeat(3, 1fr); }
+.over-stats b { font-size: 24px; }
+#screen-over.won .over-stats { background: #dcf8ea; }
+#screen-over.won #over-title { color: var(--ok); }
+
+.cab-head { display: flex; align-items: center; gap: 14px; padding: 12px 16px; }
+.cab-head .owl-wrap { width: 64px; height: 75px; }
+.cab-head b { display: block; font-size: 24px; }
+.cab-age { display: block; margin-top: 6px; font-size: 14px; color: var(--muted); }
+.cab-age select {
+  font: inherit; font-size: 15px; margin-left: 4px; padding: 4px 8px; border-radius: 10px;
+  border: 2px solid #dfe6f5; background: #fff; color: var(--ink);
+}
+.cab-rank { text-align: center; font-size: 18px; }
+.cab-rank b { color: var(--main); font-size: 26px; }
+.cab-rank small { display: block; color: var(--muted); font-size: 13px; font-weight: 600; }
+.cab-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.cab-stat {
+  background: var(--card); border-radius: 16px; padding: 10px 8px; text-align: center; box-shadow: 0 3px 0 #d5dcef;
+}
+.cab-stat span { font-size: 22px; display: block; }
+.cab-stat b { display: block; font-size: 20px; }
+.cab-stat small { display: block; color: var(--muted); font-size: 12px; font-weight: 700; }
+.section-title { margin: 6px 0 -4px; font-size: 18px; }
+
+.games { list-style: none; margin: 0; padding: 0; }
+.games li { display: flex; align-items: center; gap: 10px; padding: 8px 2px; border-bottom: 2px dashed #eef1f8; }
+.games li:last-child { border-bottom: 0; }
+.games .g-ico { font-size: 22px; }
+.games .g-main { flex: 1; min-width: 0; }
+.games .g-main small { display: block; color: var(--muted); font-size: 12px; font-weight: 600; }
+.games li > b { font-size: 18px; color: var(--main); }
+.games .g-violation > b { color: var(--bad); }
+.games .g-win > b { color: var(--ok); }
+.games .empty { justify-content: center; color: var(--muted); }
+
+/* ---------- пауза после нарушения ---------- */
+.pause {
+  position: fixed; inset: 0; z-index: 12; display: grid; place-items: center; padding: 16px;
+  background: rgba(43, 45, 66, .55);
+}
+.pause-box { max-width: 380px; text-align: center; display: flex; flex-direction: column; gap: 10px; }
+.pause-box h2 { margin: 0; font-size: 26px; }
+.pause-box p { margin: 0; }
+.pause-ico { font-size: 52px; }
+#pause-reason { font-size: 18px; color: var(--bad); }
+.warn { color: var(--bad); font-weight: 800; }
+.warn:empty { display: none; }
+.g-viol { font-style: normal; font-size: 12px; color: var(--bad); }

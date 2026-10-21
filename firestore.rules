@@ -1,25 +1,86 @@
 rules_version = '2';
 
-// Правила для онлайн-рейтинга «Считай с Филей».
-// Читать рейтинг может любой, добавлять — только правдоподобные записи, менять и удалять — никто.
+// Правила базы «Считай с Филей».
+// players  — аккаунты и статистика: видят все вошедшие игроки, меняет только сам игрок, удаляет админ
+// secrets  — PIN-коды: видят только сам игрок и админ
+// games    — журнал игр: пишет игрок про себя, читает только админ
+// presence — кто сейчас онлайн: пишет игрок про себя, читает только админ
+// config   — настройки игры: читают все, меняет только админ
+// admins   — дополнительные администраторы (не обязательно): документ с UID, создаётся в консоли
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+    // администратор — этот Google-аккаунт (или любой, чей UID добавлен в коллекцию admins)
+    function isAdmin() {
+      return signedIn() && (
+        (request.auth.token.email == 'z.working1@gmail.com' && request.auth.token.email_verified == true)
+        || exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    // за один уровень (5 ответов) больше 3000 очков набрать нельзя
+    function validPlayer(d) {
+      return d.login is string && d.login.size() >= 1 && d.login.size() <= 12
+        && d.age is string && d.age.size() <= 40
+        && d.games is int && d.wins is int && d.losses is int && d.violations is int
+        && d.playSeconds is int && d.correct is int && d.wrong is int
+        && d.bestScore is int && d.bestLevel is int && d.totalScore is int
+        && d.bestScore >= 0 && d.bestLevel >= 1 && d.bestScore <= d.bestLevel * 3000
+        && d.badges is list && d.badges.size() <= 300
+        && d.recent is list && d.recent.size() <= 10;
+    }
+
+    match /admins/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+
+    // PIN-коды: видят только сам игрок и админ; менять может только админ
+    match /secrets/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid) && request.resource.data.pin is string
+        && request.resource.data.pin.matches('^[0-9]{4,6}$') && request.resource.data.login is string;
+      allow update: if isAdmin() && request.resource.data.pin.matches('^[0-9]{4,6}$');
+      allow delete: if isAdmin();
+    }
+
+    match /config/{doc} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /players/{uid} {
+      allow read: if signedIn();
+      allow create: if isOwner(uid) && validPlayer(request.resource.data)
+        && request.resource.data.games == 0 && request.resource.data.bestScore == 0;
+      allow update: if isOwner(uid) && validPlayer(request.resource.data)
+        && request.resource.data.login == resource.data.login
+        && request.resource.data.games >= resource.data.games
+        && request.resource.data.violations >= resource.data.violations;
+      allow delete: if isAdmin();
+    }
+
+    match /games/{id} {
+      allow read: if isAdmin();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.result in ['win', 'loss', 'violation']
+        && request.resource.data.score is int && request.resource.data.level is int
+        && request.resource.data.score <= request.resource.data.level * 3000;
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    match /presence/{uid} {
+      allow read: if isAdmin();
+      allow create, update: if isOwner(uid);
+      allow delete: if isAdmin();
+    }
+
+    // старый общий рейтинг из первой версии игры — только для чтения
     match /scores/{id} {
       allow read: if true;
-      allow create: if request.resource.data.keys().hasOnly(['name', 'age', 'score', 'level', 'createdAt'])
-        && request.resource.data.name is string
-        && request.resource.data.name.size() > 0
-        && request.resource.data.name.size() <= 14
-        && request.resource.data.age in ['young', 'mid', 'old']
-        && request.resource.data.level is int
-        && request.resource.data.level >= 1
-        && request.resource.data.level <= 200
-        && request.resource.data.score is int
-        && request.resource.data.score > 0
-        // за один уровень (5 ответов) больше 3000 очков набрать нельзя
-        && request.resource.data.score <= request.resource.data.level * 3000
-        && request.resource.data.createdAt is timestamp;
-      allow update, delete: if false;
+      allow write: if false;
     }
   }
 }

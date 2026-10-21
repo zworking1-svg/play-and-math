@@ -1,57 +1,29 @@
 'use strict';
 
 /* =========================================================
-   Считай с Филей — математическая игра для детей 7–12 лет
+   Считай с Филей — игра на умножение для детей 7–12 лет
+   Настройки (таймер, возраст, награды…) приходят из админ-панели.
    ========================================================= */
 
-const MAX_HEARTS = 10;
-const CORRECT_PER_LEVEL = 5;   // сколько верных ответов до нового уровня
-const BOSS_EVERY = 10;         // каждый N-й пример — супер-пример
-const HINT_COST = 3;           // цена подсказки в монетах
-const FAST_SECONDS = 7;        // ответ быстрее — бонус за скорость
 const MAX_TIER = 8;
-// секунд на пример для каждого уровня сложности (индекс = tier)
-const TIME_LIMIT = [0, 15, 20, 20, 30, 35, 45, 60, 75];
-
-const AGES = {
-  young: { label: '7–8 лет', startTier: 1 },
-  mid:   { label: '9–10 лет', startTier: 3 },
-  old:   { label: '11–12 лет', startTier: 5 },
-};
-
 const RANKS = ['Новичок', 'Ученик', 'Счетовод', 'Знаток', 'Мастер', 'Профессор', 'Гений', 'Легенда'];
-
 const OUTFITS = {
-  2: 'Филя надел галстук-бабочку! 🎀',
-  3: 'Филя надел умные очки! 👓',
-  5: 'Филя получил шапку учёного! 🎓',
-  8: 'Филя получил КОРОНУ! 👑',
+  2: 'надел галстук-бабочку! 🎀',
+  3: 'надел умные очки! 👓',
+  5: 'получил шапку учёного! 🎓',
+  8: 'получил КОРОНУ! 👑',
 };
-
-const ACHIEVEMENTS = [
-  { id: 'first',    ico: '🌱', name: 'Первый шаг',    desc: 'Первый верный ответ' },
-  { id: 'streak5',  ico: '🔥', name: 'Огонёк',        desc: '5 верных ответов подряд' },
-  { id: 'streak10', ico: '☄️', name: 'Пламя',         desc: '10 верных ответов подряд' },
-  { id: 'streak25', ico: '🌋', name: 'Вулкан',        desc: '25 верных ответов подряд' },
-  { id: 'fast',     ico: '⚡', name: 'Молния',        desc: 'Ответ быстрее 3 секунд' },
-  { id: 'boss',     ico: '👑', name: 'Победитель',    desc: 'Решить супер-пример' },
-  { id: 'level5',   ico: '🎓', name: 'Мастер',        desc: 'Дойти до 5 уровня' },
-  { id: 'level8',   ico: '🏰', name: 'Легенда',       desc: 'Дойти до 8 уровня' },
-  { id: 'score500', ico: '⭐', name: '500 очков',     desc: 'Набрать 500 очков за игру' },
-  { id: 'score3000',ico: '🌟', name: '3000 очков',    desc: 'Набрать 3000 очков за игру' },
-  { id: 'clean',    ico: '💎', name: 'Без ошибок',    desc: '20 верных ответов и все 10 сердечек целы' },
-  { id: 'rich',     ico: '💰', name: 'Копилка',       desc: 'Накопить 30 монет' },
-];
-
 const PRAISE = ['Молодец!', 'Верно!', 'Супер!', 'Отлично!', 'Ты умница!', 'Так держать!', 'Здорово!', 'Ух ты, класс!', 'Правильно!'];
 const COMFORT = ['Ой! Бывает.', 'Не сдавайся!', 'Почти!', 'Ничего, получится!', 'Попробуем дальше!'];
 const OVER_MSG = [
-  'Ничего страшного — каждый раз ты становишься сильнее!',
-  'Хорошая игра! Попробуй побить свой рекорд.',
-  'Филя тобой гордится! Давай ещё раз?',
+  () => 'Ничего страшного — каждый раз ты становишься сильнее!',
+  () => 'Хорошая игра! Попробуй побить свой рекорд.',
+  () => `${CONFIG.heroName} тобой гордится! Давай ещё раз?`,
 ];
+const RESULT_ICO = { win: '🏆', loss: '💔' };
+const HEARTBEAT_MS = 25000;   // как часто игра сообщает «я онлайн»
 
-/* ---------- хранилище (может быть недоступно — тогда просто не сохраняем) ---------- */
+/* ---------- хранилище браузера: только настройка звука ---------- */
 const store = {
   get(key, fallback) {
     try { const v = localStorage.getItem('filya.' + key); return v ? JSON.parse(v) : fallback; }
@@ -67,6 +39,7 @@ const $ = (sel) => document.querySelector(sel);
 const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const chance = (p) => Math.random() < p;
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 /* =========================================================
    Генератор примеров по уровню сложности (tier 1…8) — только умножение
@@ -81,7 +54,6 @@ function mul3(min, max) {
   return { text: `${a} × ${b} × ${c}`, answer: a * b * c };
 }
 
-// Только умножение: от таблицы на 2–5 до двузначного на двузначное
 function generate(tier) {
   switch (tier) {
     case 1: return mul(2, 5, 1, 5);                       // 3 × 4
@@ -102,27 +74,49 @@ function generate(tier) {
 /* =========================================================
    Состояние
    ========================================================= */
-let player = store.get('player', { name: '', age: '' });
+let cloud = null;        // cloud.js (Firebase) или cloud-mock.js (демо)
+let shared = null;       // settings.js
+let CONFIG = null;       // настройки из админ-панели
+let uid = null;
+let profile = null;      // аккаунт игрока: статистика, награды
 let soundOn = store.get('sound', true);
-let unlocked = new Set(store.get('badges', []));
 let S = null;            // состояние текущей игры
 let input = '';
 let locked = false;
 let nextTimer = null;
 let tickTimer = null;
 let newBadgesThisGame = [];
+let authBusy = false;
 
 function newGameState() {
   return {
-    score: 0, hearts: MAX_HEARTS, coins: 0,
-    streak: 0, bestStreak: 0, correct: 0, mistakes: 0,
+    score: 0, hearts: CONFIG.maxHearts, coins: 0,
+    streak: 0, bestStreak: 0, correct: 0, mistakes: 0, bosses: 0,
+    violations: 0, violationReasons: [], paused: false,
     level: 1, qCount: 0, problem: null, startedAt: 0, limit: 0, hintUsed: false,
+    gameStart: performance.now(), gameStartWall: Date.now(),
   };
 }
 
-const tierFor = (level) => Math.min(MAX_TIER, AGES[player.age].startTier + Math.floor((level - 1) / 2));
+const ageInfo = (id) => CONFIG.ages.find((a) => a.id === id) || CONFIG.ages[0];
+const tierFor = (level) => Math.min(MAX_TIER, ageInfo(profile.age).startTier + Math.floor((level - 1) / 2));
 const comboMult = (streak) => (streak >= 10 ? 3 : streak >= 5 ? 2 : 1);
 const rankFor = (level) => RANKS[Math.min(level, RANKS.length) - 1];
+
+function deviceInfo() {
+  const ua = navigator.userAgent;
+  const iPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+  const os = iPadOS ? 'iPadOS' : /Android/i.test(ua) ? 'Android' : /iPhone|iPad|iPod/i.test(ua) ? 'iOS'
+    : /Windows/i.test(ua) ? 'Windows' : /CrOS/.test(ua) ? 'ChromeOS' : /Mac OS X/i.test(ua) ? 'macOS'
+    : /Linux/i.test(ua) ? 'Linux' : 'Другая';
+  const type = iPadOS || /iPad|Tablet/i.test(ua) || (/Android/i.test(ua) && !/Mobile/i.test(ua)) ? 'Планшет'
+    : /Mobi|iPhone|Android/i.test(ua) ? 'Телефон' : 'Компьютер';
+  const browser = /YaBrowser/.test(ua) ? 'Яндекс' : /SamsungBrowser/.test(ua) ? 'Samsung' : /Edg\//.test(ua) ? 'Edge'
+    : /OPR\//.test(ua) ? 'Opera' : /Firefox|FxiOS/.test(ua) ? 'Firefox' : /Chrome|CriOS/.test(ua) ? 'Chrome'
+    : /Safari/.test(ua) ? 'Safari' : 'Другой';
+  return { type, os, browser };
+}
+const DEVICE = deviceInfo();
 
 /* =========================================================
    Звук (WebAudio, без файлов)
@@ -148,6 +142,7 @@ const sfx = {
   level: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, 'triangle', i * 0.11)),
   heart: () => [784, 988, 1175].forEach((f, i) => tone(f, 0.12, 'sine', i * 0.08)),
   over:  () => [392, 330, 262].forEach((f, i) => tone(f, 0.25, 'triangle', i * 0.2)),
+  win:   () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.22, 'triangle', i * 0.12)),
 };
 
 /* =========================================================
@@ -155,8 +150,11 @@ const sfx = {
    ========================================================= */
 function show(id) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === id));
+  if (id === 'screen-menu') renderMenu();
   if (id === 'screen-records') renderRecords();
   if (id === 'screen-badges') renderBadges();
+  if (id === 'screen-cabinet') renderCabinet();
+  if (id === 'screen-rules') renderRules();
   window.scrollTo(0, 0);
 }
 
@@ -165,7 +163,7 @@ function toast(text) {
   t.textContent = text;
   t.classList.add('show');
   clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => t.classList.remove('show'), 2200);
+  toast.timer = setTimeout(() => t.classList.remove('show'), 2400);
 }
 
 function confetti(n = 60) {
@@ -199,34 +197,183 @@ function animate(el, cls) {
   el.classList.add(cls);
 }
 
+function setOwl(svg, level, sad = false) {
+  svg.setAttribute('class', `owl lvl-${Math.min(Math.max(level, 1), 8)}${sad ? ' sad' : ''}`);
+}
+
+// имя героя и название игры задаются в админ-панели
+function applyBranding() {
+  document.title = CONFIG.gameTitle;
+  document.querySelectorAll('.js-title').forEach((el) => { el.textContent = CONFIG.gameTitle; });
+  document.querySelectorAll('.js-hero').forEach((el) => { el.textContent = CONFIG.heroName; });
+  store.set('title', CONFIG.gameTitle);   // чтобы при следующем запуске сразу показать своё название
+}
+
+/* =========================================================
+   Запуск, вход и регистрация
+   ========================================================= */
+async function boot() {
+  const lastTitle = store.get('title', '');
+  if (lastTitle) document.querySelectorAll('.js-title').forEach((el) => { el.textContent = lastTitle; });
+  initControls();
+  Fair.init();
+  Presence.init();
+  try {
+    const hasKeys = window.FIREBASE_CONFIG && FIREBASE_CONFIG.projectId && FIREBASE_CONFIG.apiKey;
+    const useMock = new URLSearchParams(location.search).has('mock') || !hasKeys;
+    shared = await import('./settings.js');
+    ({ cloud } = await import(useMock ? './cloud-mock.js' : './cloud.js'));
+    CONFIG = await cloud.loadConfig();
+  } catch (e) {
+    console.error(e);
+    $('#loading-msg').textContent = 'Не получилось загрузить игру. Проверь интернет и обнови страницу 📶';
+    return;
+  }
+  applyBranding();
+  if (cloud.mode === 'mock') toast('Демо-режим: данные хранятся только в этом браузере');
+  initAuth();
+  cloud.onAuth(onAuthChange);
+}
+
+async function onAuthChange(user) {
+  if (authBusy) return;               // регистрация сама откроет меню
+  if (!user) {
+    uid = null;
+    profile = null;
+    showAuth();
+    return;
+  }
+  if (user.uid === uid && profile) return;
+  try {
+    uid = user.uid;
+    profile = await cloud.getProfile(uid)
+      || await cloud.createProfile(uid, cloud.loginFromEmail(user.email), CONFIG.ages[0].id);
+    show('screen-menu');
+  } catch (e) {
+    console.error(e);
+    $('#loading-msg').textContent = 'Нет связи с сервером. Проверь интернет и обнови страницу 📶';
+    show('screen-loading');
+  }
+}
+
+let authMode = 'login';
+let authAge = null;
+
+function initAuth() {
+  document.querySelectorAll('#auth-tabs button').forEach((b) =>
+    b.addEventListener('click', () => setAuthMode(b.dataset.mode)));
+  $('#auth-form').addEventListener('submit', (e) => { e.preventDefault(); submitAuth(); });
+  $('#auth-pin').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, ''); });
+}
+
+function showAuth() {
+  const pickBox = $('#auth-age-pick');
+  pickBox.innerHTML = '';
+  CONFIG.ages.forEach((a) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.dataset.age = a.id;
+    b.textContent = a.label.replace(/\s*лет$/, '');
+    b.addEventListener('click', () => {
+      authAge = a.id;
+      pickBox.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+    });
+    pickBox.appendChild(b);
+  });
+  pickBox.style.gridTemplateColumns = `repeat(${Math.min(CONFIG.ages.length, 3)}, 1fr)`;
+  setAuthMode(authMode);
+  show('screen-auth');
+}
+
+function setAuthMode(mode) {
+  authMode = mode;
+  document.querySelectorAll('#auth-tabs button').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
+  $('#auth-age-field').hidden = mode !== 'register';
+  $('#btn-auth').textContent = mode === 'register' ? 'Создать аккаунт ▶' : 'Войти ▶';
+  $('#auth-pin').autocomplete = mode === 'register' ? 'new-password' : 'current-password';
+  $('#auth-error').textContent = '';
+}
+
+const AUTH_ERRORS = {
+  'auth/email-already-in-use': 'Такой логин уже занят. Придумай другой 🙂',
+  'auth/invalid-credential': 'Неверный логин или PIN-код',
+  'auth/wrong-password': 'Неверный логин или PIN-код',
+  'auth/user-not-found': 'Неверный логин или PIN-код',
+  'auth/invalid-login-credentials': 'Неверный логин или PIN-код',
+  'auth/too-many-requests': 'Слишком много попыток. Подожди пару минут',
+  'auth/network-request-failed': 'Нет интернета 📶',
+  'auth/operation-not-allowed': 'Вход по логину ещё не включён. Попроси взрослого (см. README)',
+};
+
+async function submitAuth() {
+  const login = $('#auth-login').value.trim();
+  const pin = $('#auth-pin').value;
+  const errBox = $('#auth-error');
+  if (!/^[a-zA-Zа-яА-ЯёЁ0-9_]{3,12}$/.test(login)) {
+    errBox.textContent = 'Логин: от 3 до 12 букв или цифр, без пробелов';
+    return;
+  }
+  if (!/^\d{4,6}$/.test(pin)) { errBox.textContent = 'PIN-код: от 4 до 6 цифр'; return; }
+  if (authMode === 'register' && !authAge) { errBox.textContent = 'Выбери свой возраст 🙂'; return; }
+
+  const btn = $('#btn-auth');
+  btn.disabled = true;
+  errBox.textContent = '';
+  try {
+    if (authMode === 'register') {
+      authBusy = true;
+      profile = await cloud.register(login, pin, authAge);
+      uid = await currentUid();
+      authBusy = false;
+      toast(`Аккаунт создан! Добро пожаловать, ${login}!`);
+      show('screen-menu');
+    } else {
+      await cloud.signIn(login, pin);   // дальше меню откроет onAuthChange
+    }
+    $('#auth-pin').value = '';
+  } catch (e) {
+    authBusy = false;
+    console.error(e);
+    errBox.textContent = AUTH_ERRORS[e.code] || 'Что-то пошло не так. Попробуй ещё раз';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// uid текущего пользователя сразу после регистрации
+function currentUid() {
+  return new Promise((resolve) => {
+    let off = null;
+    off = cloud.onAuth((u) => {
+      if (!u) return;
+      resolve(u.uid);
+      setTimeout(() => off && off(), 0);
+    });
+  });
+}
+
+async function logout() {
+  Presence.offline();
+  await cloud.signOut();
+}
+
 /* =========================================================
    Меню
    ========================================================= */
-function initMenu() {
-  $('#player-name').value = player.name;
-  setAge(player.age);
-  document.querySelectorAll('#age-pick button').forEach((b) =>
-    b.addEventListener('click', () => setAge(b.dataset.age)));
-  $('#btn-play').addEventListener('click', () => {
-    const name = $('#player-name').value.trim();
-    if (!name) return showMenuError('Напиши своё имя 🙂');
-    if (!AGES[player.age]) return showMenuError('Выбери свой возраст 🙂');
-    player.name = name;
-    store.set('player', player);
-    startGame();
-  });
-  $('#player-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#btn-play').click(); });
-  document.querySelectorAll('[data-open]').forEach((b) =>
-    b.addEventListener('click', () => show(b.dataset.open)));
+function renderMenu() {
+  if (!profile) return;
+  $('#menu-hello').textContent = `Привет, ${profile.login}! Готов считать?`;
+  setOwl($('#menu-owl svg'), profile.bestLevel);
+  $('#menu-goal').innerHTML = `🏆 Цель: набери <b>${CONFIG.winScore}</b> очков за игру` +
+    (profile.bestScore ? ` · твой рекорд: <b>${profile.bestScore}</b>` : '');
+  $('#fair-note').hidden = !CONFIG.antiCheat;
+  Presence.set('menu');
+  // подтягиваем свежие настройки из админ-панели к следующей игре
+  cloud.loadConfig().then((c) => { CONFIG = c; applyBranding(); }).catch(() => {});
 }
-function setAge(age) {
-  player.age = age;
-  document.querySelectorAll('#age-pick button').forEach((b) => b.classList.toggle('on', b.dataset.age === age));
-}
-function showMenuError(msg) { $('#menu-error').textContent = msg; }
 
 /* =========================================================
-   Честная игра: свернул, переключился, уменьшил окно — проигрыш
+   Честная игра: свернул, переключился, уменьшил окно — пауза и новый пример
    ========================================================= */
 const Fair = {
   active: false,
@@ -235,6 +382,7 @@ const Fair = {
   calmUntil: 0,        // короткая пауза на старте, пока браузер разворачивает экран
 
   start() {
+    if (!CONFIG.antiCheat) return;
     this.active = true;
     this.fullscreen = false;
     this.calmUntil = performance.now() + 1500;
@@ -265,7 +413,7 @@ const Fair = {
     // поворот телефона — не нарушение, просто запоминаем новый размер
     if (landscape !== this.base.landscape) return this.remember();
     if (performance.now() > this.calmUntil && (w < this.base.w * 0.85 || h < this.base.h * 0.7)) {
-      return cheat('Окно игры стало меньше');
+      return violation('Окно игры стало меньше');
     }
     this.base.w = Math.max(this.base.w, w);
     this.base.h = Math.max(this.base.h, h);
@@ -273,18 +421,19 @@ const Fair = {
 
   init() {
     document.addEventListener('visibilitychange', () => {
-      if (this.active && document.hidden) cheat('Ты свернул игру или открыл другое приложение');
+      if (this.active && document.hidden) violation('Ты свернул игру или открыл другое приложение');
     });
     window.addEventListener('blur', () => {
-      if (this.active) cheat('Ты переключился на другое окно');
+      if (this.active) violation('Ты переключился на другое окно');
     });
+    // закрыл страницу посреди игры — игра заканчивается, набранное сохраняется
     window.addEventListener('pagehide', () => {
-      if (this.active) cheat('Ты ушёл со страницы игры');
+      if (S) endGame('loss', 'Закрыл игру');
     });
     window.addEventListener('resize', () => this.onResize());
     const onFs = () => {
       const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
-      if (this.active && this.fullscreen && !fsEl) cheat('Ты вышел из полноэкранного режима');
+      if (this.active && this.fullscreen && !fsEl) violation('Ты вышел из полноэкранного режима');
     };
     document.addEventListener('fullscreenchange', onFs);
     document.addEventListener('webkitfullscreenchange', onFs);
@@ -295,17 +444,64 @@ const Fair = {
 };
 
 /* =========================================================
+   Онлайн: администратор видит, кто сейчас играет и что делает
+   ========================================================= */
+const Presence = {
+  state: 'offline',
+  timer: null,
+
+  init() {
+    document.addEventListener('visibilitychange', () => {
+      if (!uid) return;
+      if (document.hidden) this.send('offline');
+      else this.send(this.state);
+    });
+    window.addEventListener('pagehide', () => this.offline());
+  },
+
+  set(state) {
+    this.state = state;
+    this.send(state);
+    clearInterval(this.timer);
+    this.timer = setInterval(() => { if (!document.hidden) this.send(this.state); }, HEARTBEAT_MS);
+  },
+
+  send(state) {
+    if (!uid || !profile || !cloud) return;
+    const playing = (state === 'playing' || state === 'paused') && S;
+    cloud.setPresence(uid, {
+      login: profile.login,
+      age: profile.age,
+      state,
+      level: playing ? S.level : null,
+      score: playing ? S.score : null,
+      hearts: playing ? S.hearts : null,
+      gameStartedAt: playing ? S.gameStartWall : null,
+      device: DEVICE,
+    }).catch(() => {});
+  },
+
+  offline() {
+    clearInterval(this.timer);
+    this.send('offline');
+  },
+};
+
+/* =========================================================
    Игра
    ========================================================= */
 function startGame() {
+  if (!profile) return;
   $('#menu-error').textContent = '';
   S = newGameState();
   newBadgesThisGame = [];
   show('screen-game');
   renderHearts();
   renderStats();
-  say(`Привет, ${player.name}! Реши пример!`);
+  $('#btn-hint').textContent = `💡 Подсказка (${CONFIG.hintCost} 💰)`;
+  say(`Привет, ${profile.login}! Реши пример!`);
   Fair.start();
+  Presence.set('playing');
   nextProblem();
 }
 
@@ -316,13 +512,13 @@ function stopTimers() {
 
 function nextProblem() {
   S.qCount++;
-  const boss = S.qCount % BOSS_EVERY === 0;
+  const boss = S.qCount % CONFIG.bossEvery === 0;
   const tier = Math.min(MAX_TIER, tierFor(S.level) + (boss ? 1 : 0));
   let p;
   do { p = generate(tier); } while (S.problem && p.text === S.problem.text);
   S.problem = { ...p, boss, tier };
   S.startedAt = performance.now();
-  S.limit = TIME_LIMIT[tier];
+  S.limit = CONFIG.timeLimits[tier - 1];
   S.hintUsed = false;
   input = '';
   locked = false;
@@ -376,7 +572,7 @@ function pressKey(k) {
 }
 
 function submit(value = input) {
-  if (locked || value === '') return;
+  if (locked || value === '' || !S) return;
   locked = true;
   clearInterval(tickTimer);
   input = String(value);
@@ -390,11 +586,12 @@ function onCorrect() {
   const seconds = (performance.now() - S.startedAt) / 1000;
   S.streak++;
   S.correct++;
+  if (p.boss) S.bosses++;
   S.bestStreak = Math.max(S.bestStreak, S.streak);
 
   const mult = comboMult(S.streak);
   let gain = 10 * p.tier * mult;
-  const fast = seconds < FAST_SECONDS && !S.hintUsed;
+  const fast = seconds < CONFIG.fastSeconds && !S.hintUsed;
   if (fast) gain += 5 * p.tier;
   if (p.boss) gain *= 2;
   if (S.hintUsed) gain = Math.ceil(gain / 2);
@@ -412,7 +609,7 @@ function onCorrect() {
   if (mult > 1) msg += ` 🔥 Комбо ×${mult}`;
 
   // каждые 10 подряд — новое сердечко
-  if (S.streak % 10 === 0 && S.hearts < MAX_HEARTS) {
+  if (S.streak % 10 === 0 && S.hearts < CONFIG.maxHearts) {
     S.hearts++;
     renderHearts(S.hearts - 1);
     setTimeout(sfx.heart, 250);
@@ -420,19 +617,26 @@ function onCorrect() {
   }
 
   // новый уровень
-  if (S.correct % CORRECT_PER_LEVEL === 0) {
+  if (S.correct % CONFIG.correctPerLevel === 0) {
     S.level++;
     setTimeout(sfx.level, 300);
     confetti();
     msg = `Уровень ${S.level}! Ты теперь ${rankFor(S.level)}!`;
-    const outfit = OUTFITS[Math.min(S.level, 8)];
-    if (outfit && S.level <= 8) setTimeout(() => toast(outfit), 400);
+    const outfit = OUTFITS[S.level];
+    if (outfit) setTimeout(() => toast(`${CONFIG.heroName} ${outfit}`), 400);
   }
 
-  say(msg);
-  if (seconds < 3 && !S.hintUsed) award('fast');
-  checkAchievements();
+  checkAchievements(S, S.hintUsed ? null : seconds);
   renderStats();
+
+  // победа: набрал нужное количество очков
+  if (S.score >= CONFIG.winScore) {
+    say(`🏆 ${CONFIG.winScore} очков! Это ПОБЕДА!`);
+    confetti(120);
+    nextTimer = setTimeout(winGame, 1600);
+    return;
+  }
+  say(msg);
   nextTimer = setTimeout(nextProblem, 1300);
 }
 
@@ -452,8 +656,8 @@ function onWrong(reason = pick(COMFORT)) {
 
 function useHint() {
   if (locked || !S || S.hintUsed) return;
-  if (S.coins < HINT_COST) return toast(`Нужно ${HINT_COST} монеты. Отвечай верно — и они появятся!`);
-  S.coins -= HINT_COST;
+  if (S.coins < CONFIG.hintCost) return toast(`Нужно ${CONFIG.hintCost} монеты. Отвечай верно — и они появятся!`);
+  S.coins -= CONFIG.hintCost;
   S.hintUsed = true;
   const ans = S.problem.answer;
   // похожие неверные ответы: ±1, ±2, ±10 — чтобы нельзя было угадать «на глаз»
@@ -473,53 +677,125 @@ function useHint() {
   renderStats();
 }
 
-// останавливает текущую игру и возвращает её итог
-function finish() {
+/* ---------- нарушение правил: пауза и новый пример ---------- */
+
+// очки сохраняются, но текущий пример заменяется — подсмотреть ответ на калькуляторе не выйдет
+function violation(reason) {
+  if (!S || S.paused) return;
+  S.paused = true;
+  S.violations++;
+  if (!S.violationReasons.includes(reason)) S.violationReasons.push(reason);
+  stopTimers();
+  locked = true;
+  $('#keypad').classList.add('locked');
+  profile.violations++;
+  cloud.addViolation(uid).catch(() => {});
+  sfx.bad();
+  $('#pause-reason').textContent = reason + '.';
+  $('#pause-count').textContent = S.violations > 1 ? `Нарушений в этой игре: ${S.violations}` : '';
+  $('#pause').hidden = false;
+  Presence.set('paused');
+}
+
+function resumeGame() {
+  if (!S || !S.paused) return;
+  S.paused = false;
+  $('#pause').hidden = true;
+  Fair.start();                 // снова полноэкранный режим (нужно нажатие кнопки)
+  Presence.set('playing');
+  // если пауза пришлась на конец игры — доводим его
+  if (S.hearts <= 0) return gameOver();
+  if (S.score >= CONFIG.winScore) return winGame();
+  say('Продолжаем! Вот новый пример.');
+  nextProblem();
+}
+
+/* ---------- конец игры ---------- */
+
+// останавливает игру, записывает итог в аккаунт и возвращает его
+function endGame(result, reason = '') {
   stopTimers();
   Fair.stop();
-  const result = S;
+  $('#pause').hidden = true;
+  const g = S;
   S = null;
   locked = true;
-  return result;
+  const summary = {
+    result,
+    reason,
+    score: g.score,
+    level: g.level,
+    correct: g.correct,
+    wrong: g.mistakes,
+    bestStreak: g.bestStreak,
+    violations: g.violations,
+    violationReasons: g.violationReasons,
+    seconds: Math.round((performance.now() - g.gameStart) / 1000),
+    at: Date.now(),
+  };
+
+  const wasBest = profile.bestScore;
+  profile.games++;
+  profile[result === 'win' ? 'wins' : 'losses']++;
+  profile.playSeconds += summary.seconds;
+  profile.correct += summary.correct;
+  profile.wrong += summary.wrong;
+  profile.totalScore += summary.score;
+  profile.bestScore = Math.max(profile.bestScore, summary.score);
+  profile.bestLevel = Math.max(profile.bestLevel, summary.level);
+  profile.recent = [
+    { result, reason, score: summary.score, level: summary.level, seconds: summary.seconds,
+      violations: summary.violations, at: summary.at },
+    ...profile.recent,
+  ].slice(0, 10);
+
+  checkAchievements(null, null);   // награды за победы, количество игр, время
+  cloud.recordGame(uid, profile, summary, DEVICE)
+    .catch((e) => { console.error(e); toast('Нет интернета — результат не сохранился 📶'); });
+  Presence.set('menu');
+  return { g, summary, isBest: summary.score > wasBest && summary.score > 0 };
+}
+
+function winGame() {
+  const { g, summary } = endGame('win', `Набрано ${CONFIG.winScore}+ очков`);
+  sfx.win();
+  confetti(150);
+  $('#over-title').textContent = '🏆 ПОБЕДА!';
+  $('#over-msg').textContent = `Ты набрал ${g.score} очков — ${CONFIG.heroName} в восторге!`;
+  showOver(g, summary, 'win');
 }
 
 function gameOver() {
-  const g = finish();
+  const { g, summary, isBest } = endGame('loss', 'Закончились сердечки');
   sfx.over();
-  const isTop = saveRecord(g);
   $('#over-title').textContent = 'Сердечки закончились';
-  $('#over-msg').textContent = isTop ? '🏆 Это твой новый рекорд! Ура!' : pick(OVER_MSG);
-  if (isTop) confetti(90);
-  showOver(g, false);
+  $('#over-msg').textContent = isBest ? '🏆 Это твой новый рекорд! Ура!' : pick(OVER_MSG)();
+  if (isBest) confetti(90);
+  showOver(g, summary, 'loss');
 }
 
-// нарушение правил честной игры: результат сгорает и в рекорды не попадает
-function cheat(reason) {
-  if (!S) return;
-  const g = finish();
-  sfx.bad();
-  $('#over-title').textContent = '🚫 Игра остановлена';
-  $('#over-msg').textContent = `${reason}. По правилам честной игры результат сгорел.`;
-  showOver(g, true);
-}
-
-function showOver(g, burned) {
-  $('#over-score').textContent = burned ? 0 : g.score;
+function showOver(g, summary, result) {
+  $('#over-score').textContent = summary.score;
   $('#over-level').textContent = g.level;
   $('#over-correct').textContent = g.correct;
+  $('#over-wrong').textContent = g.mistakes;
   $('#over-streak').textContent = g.bestStreak;
-  $('#screen-over').classList.toggle('burned', burned);
-  $('#over-badges').innerHTML = !burned && newBadgesThisGame.length
+  $('#over-time').textContent = shared.fmtDuration(summary.seconds);
+  $('#over-viol').textContent = g.violations
+    ? `🚫 Нарушений правил в этой игре: ${g.violations}. Играй честно!` : '';
+  $('#screen-over').classList.toggle('won', result === 'win');
+  setOwl($('#over-owl svg'), g.level, result !== 'win');
+  $('#over-badges').innerHTML = newBadgesThisGame.length
     ? '<p class="sub">Новые награды:</p>' + newBadgesThisGame
-        .map((a) => `<span class="badge-chip">${a.ico} ${a.name}</span>`).join('')
+        .map((a) => `<span class="badge-chip">${esc(a.ico)} ${esc(a.name)}</span>`).join('')
     : '';
   show('screen-over');
 }
 
+// выход в меню посреди игры считается поражением, но результат сохраняется
 function exitGame() {
   if (!S) return show('screen-menu');
-  const g = finish();
-  saveRecord(g);
+  endGame('loss', 'Вышел в меню');
   show('screen-menu');
 }
 
@@ -532,7 +808,9 @@ function say(text, sad = false) {
 function renderHearts(popIndex = -1) {
   const box = $('#hearts');
   box.innerHTML = '';
-  for (let i = 0; i < MAX_HEARTS; i++) {
+  const n = Math.max(CONFIG.maxHearts, S.hearts);
+  box.style.fontSize = n > 10 ? `${Math.max(9, 150 / n)}px` : '';
+  for (let i = 0; i < n; i++) {
     const h = document.createElement('span');
     h.className = 'heart' + (i >= S.hearts ? ' lost' : '') + (i === popIndex ? ' pop' : '');
     h.textContent = '❤️';
@@ -541,169 +819,163 @@ function renderHearts(popIndex = -1) {
 }
 
 function renderStats() {
+  const per = CONFIG.correctPerLevel;
   $('#score').textContent = S.score;
   $('#level').textContent = S.level;
   $('#coins').textContent = '💰 ' + S.coins;
-  const progress = (S.correct % CORRECT_PER_LEVEL) / CORRECT_PER_LEVEL;
-  $('#level-fill').style.width = progress * 100 + '%';
-  $('#rank-name').textContent = `${rankFor(S.level)} · до уровня ${S.level + 1}: ${CORRECT_PER_LEVEL - (S.correct % CORRECT_PER_LEVEL)}`;
+  $('#level-fill').style.width = ((S.correct % per) / per) * 100 + '%';
+  $('#rank-name').textContent = `${rankFor(S.level)} · до уровня ${S.level + 1}: ${per - (S.correct % per)}`;
+  $('#goal-fill').style.width = Math.min(1, S.score / CONFIG.winScore) * 100 + '%';
+  $('#goal-text').textContent = `🏆 до победы: ${Math.max(0, CONFIG.winScore - S.score)} очков`;
   const mult = comboMult(S.streak);
   $('#combo').textContent = mult > 1 ? `🔥 ×${mult}` : (S.streak >= 2 ? `🔥 ${S.streak}` : '');
-  $('#btn-hint').disabled = S.hintUsed || S.coins < HINT_COST;
-  $('#game-owl .owl').setAttribute('class', `owl lvl-${Math.min(S.level, 8)}`);
+  $('#btn-hint').disabled = S.hintUsed || S.coins < CONFIG.hintCost;
+  const owl = $('#game-owl .owl');
+  setOwl(owl, S.level, owl.classList.contains('sad'));
 }
 
 /* =========================================================
-   Награды
+   Награды (настраиваются в админ-панели)
    ========================================================= */
-function award(id) {
-  if (unlocked.has(id)) return;
-  unlocked.add(id);
-  store.set('badges', [...unlocked]);
-  const a = ACHIEVEMENTS.find((x) => x.id === id);
+// st — состояние игры (null после её окончания), sec — время ответа
+function achieved(a, st, sec) {
+  const v = a.value;
+  switch (a.type) {
+    case 'correct': return !!st && st.correct >= v;
+    case 'streak':  return !!st && st.streak >= v;
+    case 'level':   return !!st && st.level >= v;
+    case 'score':   return !!st && st.score >= v;
+    case 'coins':   return !!st && st.coins >= v;
+    case 'boss':    return !!st && st.bosses >= v;
+    case 'clean':   return !!st && st.correct >= v && st.mistakes === 0;
+    case 'fast':    return sec != null && sec < v;
+    case 'wins':    return profile.wins >= v;
+    case 'games':   return profile.games >= v;
+    case 'time':    return profile.playSeconds >= v * 60;
+    default:        return false;
+  }
+}
+
+function checkAchievements(st, sec) {
+  for (const a of CONFIG.achievements) {
+    if (!profile.badges.includes(a.id) && achieved(a, st, sec)) award(a);
+  }
+}
+
+function award(a) {
+  profile.badges.push(a.id);
   newBadgesThisGame.push(a);
+  cloud.addBadge(uid, a.id).catch(() => {});
   setTimeout(() => toast(`Новая награда: ${a.ico} ${a.name}!`), 900);
 }
 
-function checkAchievements() {
-  if (S.correct >= 1) award('first');
-  if (S.streak >= 5) award('streak5');
-  if (S.streak >= 10) award('streak10');
-  if (S.streak >= 25) award('streak25');
-  if (S.problem.boss) award('boss');
-  if (S.level >= 5) award('level5');
-  if (S.level >= 8) award('level8');
-  if (S.score >= 500) award('score500');
-  if (S.score >= 3000) award('score3000');
-  if (S.correct >= 20 && S.mistakes === 0) award('clean');
-  if (S.coins >= 30) award('rich');
-}
-
 function renderBadges() {
-  $('#badges-grid').innerHTML = ACHIEVEMENTS.map((a) => `
-    <div class="badge ${unlocked.has(a.id) ? '' : 'locked'}">
-      <span class="ico">${a.ico}</span><b>${a.name}</b><small>${a.desc}</small>
+  if (!profile) return;
+  const list = CONFIG.achievements;
+  const got = list.filter((a) => profile.badges.includes(a.id)).length;
+  $('#badges-count').textContent = `Собрано ${got} из ${list.length}. Награды остаются у тебя навсегда.`;
+  $('#badges-grid').innerHTML = list.map((a) => `
+    <div class="badge ${profile.badges.includes(a.id) ? '' : 'locked'}">
+      <span class="ico">${esc(a.ico)}</span><b>${esc(a.name)}</b><small>${esc(a.desc)}</small>
     </div>`).join('');
 }
 
-/* =========================================================
-   Рекорды: на этом устройстве + общий онлайн-рейтинг (Firebase Firestore)
-   ========================================================= */
-const Online = {
-  get enabled() {
-    const c = window.FIREBASE_CONFIG;
-    return !!(c && c.projectId && c.apiKey);
-  },
-  url(path) {
-    const c = window.FIREBASE_CONFIG;
-    return `https://firestore.googleapis.com/v1/projects/${c.projectId}/databases/(default)/documents${path}?key=${c.apiKey}`;
-  },
-  async submit(rec) {
-    if (!this.enabled) return;
-    const res = await fetch(this.url('/scores'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fields: {
-        name: { stringValue: rec.name },
-        age: { stringValue: rec.age },
-        score: { integerValue: String(rec.score) },
-        level: { integerValue: String(rec.level) },
-        createdAt: { timestampValue: new Date().toISOString() },
-      } }),
-    });
-    if (!res.ok) throw new Error('submit ' + res.status);
-  },
-  async top(age, limit = 20) {
-    const res = await fetch(this.url(':runQuery'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ structuredQuery: {
-        from: [{ collectionId: 'scores' }],
-        where: { fieldFilter: { field: { fieldPath: 'age' }, op: 'EQUAL', value: { stringValue: age } } },
-        orderBy: [{ field: { fieldPath: 'score' }, direction: 'DESCENDING' }],
-        limit,
-      } }),
-    });
-    if (!res.ok) throw new Error('top ' + res.status);
-    const rows = await res.json();
-    return rows.filter((r) => r.document).map(({ document: { fields: f } }) => ({
-      name: f.name?.stringValue ?? '?',
-      age: f.age?.stringValue,
-      score: Number(f.score?.integerValue ?? 0),
-      level: Number(f.level?.integerValue ?? 1),
-      date: f.createdAt ? new Date(f.createdAt.timestampValue).toLocaleDateString('ru-RU') : '',
-    }));
-  },
-};
-
-// сохраняет результат; возвращает true, если это лучший результат на устройстве
-function saveRecord(g) {
-  if (g.score <= 0) return false;
-  const rec = {
-    name: player.name, age: player.age, score: g.score, level: g.level,
-    date: new Date().toLocaleDateString('ru-RU'),
-  };
-  const records = store.get('records', []);
-  const isTop = !records.length || g.score > records[0].score;
-  records.push(rec);
-  records.sort((a, b) => b.score - a.score);
-  store.set('records', records.slice(0, 10));
-  Online.submit(rec).catch(() => toast('Нет интернета — результат сохранён только на этом устройстве'));
-  return isTop;
+function renderRules() {
+  $('#rule-win').textContent = CONFIG.winScore;
+  $('#rule-hearts').textContent = CONFIG.maxHearts;
+  $('#rule-boss').textContent = CONFIG.bossEvery;
+  $('#rule-fair').hidden = !CONFIG.antiCheat;
 }
 
-const recView = { src: Online.enabled ? 'online' : 'local', age: null };
+/* =========================================================
+   Рекорды и личный кабинет
+   ========================================================= */
+let recAge = null;
 
 async function renderRecords() {
-  recView.age = recView.age || (AGES[player.age] ? player.age : 'young');
-  document.querySelectorAll('#rec-src button').forEach((b) => b.classList.toggle('on', b.dataset.src === recView.src));
-  document.querySelectorAll('#rec-age button').forEach((b) => b.classList.toggle('on', b.dataset.age === recView.age));
-  const list = $('#records-list');
-  const note = $('#rec-note');
-  note.textContent = '';
+  if (!profile) return;
+  recAge = recAge || ageInfo(profile.age).id;
+  const tabs = $('#rec-age');
+  tabs.innerHTML = '';
+  tabs.style.gridTemplateColumns = `repeat(${Math.min(CONFIG.ages.length, 3)}, 1fr)`;
+  CONFIG.ages.forEach((a) => {
+    const b = document.createElement('button');
+    b.textContent = a.label;
+    b.classList.toggle('on', a.id === recAge);
+    b.addEventListener('click', () => { recAge = a.id; renderRecords(); });
+    tabs.appendChild(b);
+  });
 
-  if (recView.src === 'local') {
-    const local = store.get('records', []).filter((r) => r.age === recView.age);
-    return fillRecords(local, 'Пока пусто. Сыграй и стань первым!');
-  }
-  if (!Online.enabled) {
-    list.innerHTML = '';
-    note.textContent = 'Общий рейтинг ещё не подключён (см. README → «Онлайн-рейтинг»).';
-    return;
-  }
+  const list = $('#records-list');
   list.innerHTML = '<li class="empty">Загружаю… ⏳</li>';
-  const want = { ...recView };
+  const want = recAge;
   try {
-    const rows = await Online.top(want.age);
-    if (want.src !== recView.src || want.age !== recView.age) return; // пока грузили, переключили вкладку
-    fillRecords(rows, 'В этой группе ещё никто не играл. Будь первым!');
-  } catch {
+    const players = (await cloud.listPlayers(want))
+      .filter((p) => p.bestScore > 0)
+      .sort((a, b) => b.bestScore - a.bestScore)
+      .slice(0, 20);
+    if (want !== recAge) return;   // пока грузили, переключили вкладку
+    if (!players.length) {
+      list.innerHTML = '<li class="empty">В этой группе ещё никто не играл. Будь первым!</li>';
+      return;
+    }
+    list.innerHTML = '';
+    players.forEach((p) => {
+      const li = document.createElement('li');
+      if (p.uid === uid) li.classList.add('me');
+      li.innerHTML = `<span class="r-name">${esc(p.login)}<small>уровень ${p.bestLevel} · побед ${p.wins}</small></span>
+        <b class="r-score">${p.bestScore}</b>`;
+      list.appendChild(li);
+    });
+  } catch (e) {
+    console.error(e);
     list.innerHTML = '<li class="empty">Не получилось загрузить. Проверь интернет 📶</li>';
   }
 }
 
-function fillRecords(records, emptyText) {
-  const list = $('#records-list');
-  if (!records.length) {
-    list.innerHTML = `<li class="empty">${emptyText}</li>`;
-    return;
+async function renderCabinet() {
+  if (!profile) return;
+  const p = profile;
+  $('#cab-login').textContent = p.login;
+  setOwl($('#cab-owl svg'), p.bestLevel);
+  const sel = $('#cab-age');
+  sel.innerHTML = CONFIG.ages.map((a) => `<option value="${esc(a.id)}">${esc(a.label)}</option>`).join('');
+  sel.value = ageInfo(p.age).id;
+
+  const stat = (ico, label, value) => `<div class="cab-stat"><span>${ico}</span><b>${value}</b><small>${label}</small></div>`;
+  const badges = CONFIG.achievements.filter((a) => p.badges.includes(a.id)).length;
+  $('#cab-stats').innerHTML = [
+    stat('⭐', 'Лучший рейтинг', p.bestScore),
+    stat('📈', 'Лучший уровень', p.bestLevel),
+    stat('🎮', 'Сыграно игр', p.games),
+    stat('🏆', 'Побед', p.wins),
+    stat('💔', 'Поражений', p.losses),
+    stat('🚫', 'Нарушений правил', p.violations),
+    stat('⏱️', 'Время в игре', shared.fmtDuration(p.playSeconds)),
+    stat('🎖️', 'Наград', `${badges} из ${CONFIG.achievements.length}`),
+    stat('✅', 'Верных ответов', p.correct),
+    stat('❌', 'Ошибок', p.wrong),
+  ].join('');
+
+  $('#cab-games').innerHTML = p.recent.length ? p.recent.map((g) => `
+    <li class="g-${esc(g.result)}">
+      <span class="g-ico">${RESULT_ICO[g.result] || '🎮'}</span>
+      <span class="g-main">${g.result === 'win' ? 'Победа' : 'Поражение'}${g.violations ? ` <em class="g-viol">🚫 ${g.violations}</em>` : ''}
+        <small>${esc(g.reason || '')} · уровень ${g.level} · ${shared.fmtDuration(g.seconds)} · ${new Date(g.at).toLocaleDateString('ru-RU')}</small></span>
+      <b>${g.score}</b>
+    </li>`).join('') : '<li class="empty">Ты ещё не играл. Нажми «Играть»!</li>';
+
+  const rankBox = $('#cab-rank');
+  rankBox.textContent = 'Считаю твоё место… ⏳';
+  try {
+    const players = await cloud.listPlayers(ageInfo(p.age).id);
+    const { place, total } = shared.rankOf(players, uid);
+    rankBox.innerHTML = place
+      ? `🥇 Твоё место: <b>${place}</b> из ${total} <small>среди игроков ${esc(ageInfo(p.age).label)}</small>`
+      : `Сыграй, чтобы попасть в рейтинг игроков ${esc(ageInfo(p.age).label)}!`;
+  } catch {
+    rankBox.textContent = 'Не получилось узнать место. Проверь интернет 📶';
   }
-  list.innerHTML = '';
-  records.forEach((r) => {
-    const li = document.createElement('li');
-    if (r.name === player.name) li.classList.add('me');
-    const name = document.createElement('span');
-    name.className = 'r-name';
-    name.textContent = r.name;
-    const meta = document.createElement('small');
-    meta.textContent = `уровень ${r.level} · ${r.date}`;
-    name.appendChild(meta);
-    const score = document.createElement('b');
-    score.className = 'r-score';
-    score.textContent = r.score;
-    li.append(name, score);
-    list.appendChild(li);
-  });
 }
 
 /* =========================================================
@@ -720,19 +992,24 @@ function initControls() {
     else if (e.key === 'Backspace') { e.preventDefault(); pressKey('back'); }
     else if (e.key === 'Enter') pressKey('ok');
   });
+  $('#btn-play').addEventListener('click', startGame);
   $('#btn-hint').addEventListener('click', useHint);
   $('#btn-exit').addEventListener('click', exitGame);
   $('#btn-again').addEventListener('click', startGame);
-  document.querySelectorAll('#rec-src button').forEach((b) =>
-    b.addEventListener('click', () => { recView.src = b.dataset.src; renderRecords(); }));
-  document.querySelectorAll('#rec-age button').forEach((b) =>
-    b.addEventListener('click', () => { recView.age = b.dataset.age; renderRecords(); }));
+  $('#btn-resume').addEventListener('click', resumeGame);
+  $('#btn-logout').addEventListener('click', logout);
+  $('#cab-age').addEventListener('change', (e) => {
+    profile.age = e.target.value;
+    recAge = null;
+    cloud.updateAge(uid, profile.age).catch(() => toast('Не получилось сохранить 📶'));
+    renderCabinet();
+  });
+  document.querySelectorAll('[data-open]').forEach((b) =>
+    b.addEventListener('click', () => show(b.dataset.open)));
   const sb = $('#btn-sound');
   const paintSound = () => { sb.textContent = soundOn ? '🔊' : '🔇'; };
   paintSound();
   sb.addEventListener('click', () => { soundOn = !soundOn; store.set('sound', soundOn); paintSound(); });
 }
 
-initMenu();
-initControls();
-Fair.init();
+boot();
