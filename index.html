@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>Считай с Филей</title>
+  <meta name="description" content="Математическая игра для детей 7–12 лет: решай примеры вместе с совёнком Филей, собирай звёзды и награды.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦉</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Совёнок Филя: один SVG, переиспользуется на всех экранах -->
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <symbol id="owl" viewBox="0 0 120 140">
+        <g class="owl-body">
+          <polygon points="22,40 26,8 46,30" fill="#6d4c41"/>
+          <polygon points="98,40 94,8 74,30" fill="#6d4c41"/>
+          <ellipse cx="60" cy="78" rx="44" ry="52" fill="#8d6e63"/>
+          <ellipse cx="18" cy="86" rx="10" ry="26" fill="#6d4c41" transform="rotate(12 18 86)"/>
+          <ellipse cx="102" cy="86" rx="10" ry="26" fill="#6d4c41" transform="rotate(-12 102 86)"/>
+          <ellipse cx="60" cy="95" rx="28" ry="30" fill="#d7ccc8"/>
+          <path d="M46 92 q4 4 8 0 M58 100 q4 4 8 0 M50 108 q4 4 8 0 M64 88 q4 4 8 0" stroke="#bcaaa4" stroke-width="2" fill="none"/>
+          <circle cx="42" cy="58" r="16" fill="#fff"/>
+          <circle cx="78" cy="58" r="16" fill="#fff"/>
+          <circle class="pupil" cx="44" cy="60" r="8" fill="#3e2723"/>
+          <circle class="pupil" cx="76" cy="60" r="8" fill="#3e2723"/>
+          <circle cx="47" cy="56" r="3" fill="#fff"/>
+          <circle cx="79" cy="56" r="3" fill="#fff"/>
+          <path style="display:var(--brow,none)" d="M28 38 L52 46 M92 38 L68 46" stroke="#3e2723" stroke-width="4" stroke-linecap="round"/>
+          <polygon points="53,70 67,70 60,83" fill="#ffb300"/>
+          <ellipse cx="46" cy="130" rx="9" ry="5" fill="#ffb300"/>
+          <ellipse cx="74" cy="130" rx="9" ry="5" fill="#ffb300"/>
+        </g>
+        <g style="display:var(--tie,none)">
+          <polygon points="60,82 44,74 44,90" fill="#e53935"/>
+          <polygon points="60,82 76,74 76,90" fill="#e53935"/>
+          <circle cx="60" cy="82" r="4" fill="#b71c1c"/>
+        </g>
+        <g style="display:var(--glasses,none)" fill="none" stroke="#1565c0" stroke-width="3.5">
+          <circle cx="42" cy="58" r="18"/>
+          <circle cx="78" cy="58" r="18"/>
+          <path d="M57 54 q3 -4 6 0"/>
+        </g>
+        <g style="display:var(--cap,none)">
+          <rect x="44" y="20" width="32" height="12" rx="2" fill="#263238"/>
+          <polygon points="60,4 100,18 60,30 20,18" fill="#37474f"/>
+          <path d="M60 17 L94 22 L94 36" stroke="#ffca28" stroke-width="2.5" fill="none"/>
+          <circle cx="94" cy="38" r="4" fill="#ffca28"/>
+        </g>
+        <g style="display:var(--crown,none)">
+          <polygon points="32,30 36,6 48,20 60,2 72,20 84,6 88,30" fill="#ffca28" stroke="#ff8f00" stroke-width="2"/>
+          <circle cx="60" cy="18" r="4" fill="#e53935"/>
+          <circle cx="42" cy="24" r="3" fill="#1e88e5"/>
+          <circle cx="78" cy="24" r="3" fill="#43a047"/>
+        </g>
+      </symbol>
+    </defs>
+  </svg>
+
+  <main class="app">
+    <!-- ============ МЕНЮ ============ -->
+    <section id="screen-menu" class="screen active">
+      <div class="menu-hero">
+        <div class="owl-wrap big bob"><svg class="owl lvl-1"><use href="#owl"/></svg></div>
+        <div class="bubble">Привет! Я совёнок Филя.<br>Давай считать вместе!</div>
+      </div>
+      <h1 class="title">Считай с Филей</h1>
+
+      <div class="card form">
+        <label class="field">
+          <span>Как тебя зовут?</span>
+          <input id="player-name" type="text" maxlength="14" placeholder="Твоё имя" autocomplete="off">
+        </label>
+        <div class="field">
+          <span>Сколько тебе лет?</span>
+          <div class="age-pick" id="age-pick">
+            <button type="button" data-age="young">7–8</button>
+            <button type="button" data-age="mid">9–10</button>
+            <button type="button" data-age="old">11–12</button>
+          </div>
+        </div>
+        <button id="btn-play" class="btn btn-main">Играть ▶</button>
+        <p id="menu-error" class="error"></p>
+      </div>
+
+      <div class="menu-links">
+        <button class="btn btn-soft" data-open="screen-records">🏆 Рекорды</button>
+        <button class="btn btn-soft" data-open="screen-badges">🎖️ Награды</button>
+        <button class="btn btn-soft" data-open="screen-rules">📖 Правила</button>
+      </div>
+    </section>
+
+    <!-- ============ ИГРА ============ -->
+    <section id="screen-game" class="screen">
+      <header class="hud">
+        <button id="btn-exit" class="icon-btn" title="В меню" aria-label="В меню">✕</button>
+        <div class="hearts" id="hearts" aria-label="Жизни"></div>
+        <button id="btn-sound" class="icon-btn" title="Звук" aria-label="Звук">🔊</button>
+      </header>
+
+      <div class="stats">
+        <div class="stat"><small>Рейтинг</small><b id="score">0</b></div>
+        <div class="stat"><small>Уровень</small><b id="level">1</b></div>
+        <div class="stat"><small>Монеты</small><b id="coins">💰 0</b></div>
+      </div>
+
+      <div class="level-bar"><div id="level-fill"></div><span id="rank-name">Новичок</span></div>
+
+      <div class="stage">
+        <div class="owl-wrap" id="game-owl"><svg class="owl"><use href="#owl"/></svg></div>
+        <div class="bubble" id="owl-say">Поехали!</div>
+      </div>
+
+      <div class="card problem-card" id="problem-card">
+        <div class="boss-tag">⭐ СУПЕР-ПРИМЕР ×2 ⭐</div>
+        <div class="combo" id="combo"></div>
+        <div class="problem"><span id="problem-text">2 + 2</span> = <span id="answer" class="answer"></span></div>
+        <div class="options" id="options"></div>
+      </div>
+
+      <div class="keypad" id="keypad">
+        <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+        <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+        <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+        <button data-k="back" class="k-back" aria-label="Стереть">⌫</button>
+        <button data-k="0">0</button>
+        <button data-k="ok" class="k-ok" aria-label="Проверить">✓</button>
+      </div>
+      <button id="btn-hint" class="btn btn-hint">💡 Подсказка (3 💰)</button>
+    </section>
+
+    <!-- ============ КОНЕЦ ИГРЫ ============ -->
+    <section id="screen-over" class="screen">
+      <div class="owl-wrap big"><svg class="owl sad"><use href="#owl"/></svg></div>
+      <h2 class="title">Сердечки закончились</h2>
+      <p class="sub" id="over-msg">Ничего страшного — попробуем ещё раз!</p>
+      <div class="card over-stats">
+        <div><small>Рейтинг</small><b id="over-score">0</b></div>
+        <div><small>Уровень</small><b id="over-level">1</b></div>
+        <div><small>Верных ответов</small><b id="over-correct">0</b></div>
+        <div><small>Лучшая серия</small><b id="over-streak">0</b></div>
+      </div>
+      <div id="over-badges"></div>
+      <button id="btn-again" class="btn btn-main">Играть снова ↻</button>
+      <button class="btn btn-soft" data-open="screen-menu">В меню</button>
+    </section>
+
+    <!-- ============ РЕКОРДЫ ============ -->
+    <section id="screen-records" class="screen">
+      <h2 class="title">🏆 Рекорды</h2>
+      <div class="card"><ol id="records-list" class="records"></ol></div>
+      <button class="btn btn-soft" data-open="screen-menu">← Назад</button>
+    </section>
+
+    <!-- ============ НАГРАДЫ ============ -->
+    <section id="screen-badges" class="screen">
+      <h2 class="title">🎖️ Награды</h2>
+      <p class="sub">Награды остаются у тебя навсегда, даже если игра закончилась.</p>
+      <div id="badges-grid" class="badges"></div>
+      <button class="btn btn-soft" data-open="screen-menu">← Назад</button>
+    </section>
+
+    <!-- ============ ПРАВИЛА ============ -->
+    <section id="screen-rules" class="screen">
+      <h2 class="title">📖 Как играть</h2>
+      <div class="card rules">
+        <p>🧮 Реши пример и нажми <b>✓</b> (или Enter).</p>
+        <p>❤️ У тебя <b>10 сердечек</b>. Ошибка забирает одно. Когда сердечки кончатся — игра начнётся заново.</p>
+        <p>⭐ За верный ответ растёт <b>рейтинг</b>. Чем выше уровень — тем больше очков.</p>
+        <p>🔥 Отвечай верно подряд — включится <b>комбо ×2</b> и <b>×3</b>!</p>
+        <p>💖 Каждые <b>10 верных ответов подряд</b> дарят новое сердечко.</p>
+        <p>⚡ Ответил быстро? Получи <b>бонус за скорость</b>.</p>
+        <p>👑 Каждый 10-й пример — <b>супер-пример</b>: он сложнее, но очков вдвое больше.</p>
+        <p>💰 Собирай монеты и трать их на <b>подсказки</b>.</p>
+        <p>🦉 С каждым уровнем Филя получает новый наряд: бабочку, очки, шапку учёного и корону!</p>
+      </div>
+      <button class="btn btn-soft" data-open="screen-menu">← Назад</button>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+  <div id="confetti" class="confetti"></div>
+
+  <script src="game.js"></script>
+</body>
+</html>
