@@ -21,6 +21,7 @@
       <button id="btn-google" class="btn primary">Войти через Google</button>
       <div id="login-denied" hidden>
         <p class="warn">Этот Google-аккаунт не администратор.</p>
+        <p>Вы вошли как: <b id="my-email"></b></p>
         <p>Войдите тем Google-аккаунтом, который указан в правилах базы (<code>firestore.rules</code>).
           Если это ваш аккаунт — проверьте, что новые правила опубликованы в Firestore → Rules.</p>
         <p class="muted">Код аккаунта (UID): <code id="my-uid"></code> <button id="btn-copy-uid" class="btn small">Копировать</button></p>

@@ -12,10 +12,14 @@ service cloud.firestore {
 
     function signedIn() { return request.auth != null; }
     function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
-    // администратор — этот Google-аккаунт (или любой, чей UID добавлен в коллекцию admins)
+    // администратор — этот Google-аккаунт (по коду UID или по почте без учёта регистра букв),
+    // а также любой, чей UID добавлен в коллекцию admins
     function isAdmin() {
       return signedIn() && (
-        (request.auth.token.email == 'z.working1@gmail.com' && request.auth.token.email_verified == true)
+        request.auth.uid == 'rKgxHzDDNkWCTZ84J76TXWjNMLI3'
+        || (request.auth.token.email is string
+            && request.auth.token.email.lower() == 'z.working1@gmail.com'
+            && request.auth.token.email_verified == true)
         || exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
     }
 

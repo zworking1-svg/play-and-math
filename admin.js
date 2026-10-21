@@ -52,16 +52,17 @@ cloud.onAuth(async (user) => {
   unsub.forEach((f) => f());
   unsub = [];
   if (!user) return showLogin();
-  if (!(await cloud.isAdmin(user.uid))) return showLogin(user.uid);
+  if (!(await cloud.isAdmin(user.uid))) return showLogin(user.uid, user.email);
   startApp();
 });
 
-function showLogin(deniedUid) {
+function showLogin(deniedUid, email) {
   $('#view-app').hidden = true;
   $('#view-login').hidden = false;
   $('#btn-google').hidden = !!deniedUid;
   $('#login-denied').hidden = !deniedUid;
   $('#my-uid').textContent = deniedUid || '';
+  $('#my-email').textContent = email || '—';
 }
 
 $('#btn-google').addEventListener('click', async () => {
